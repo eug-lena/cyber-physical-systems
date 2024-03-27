@@ -1,93 +1,121 @@
 # 2024-group-18
 
+## Prerequisities
 
+In this project, the tools were installed in `Ubuntu 22.04 LTS`. This can be done through a local boot, subsystem, multipass, virtual box, etc.
 
-## Getting started
+Once ubuntu is running, you will need the following technologies:
+- `git` 2.34.1, as well as having a public SSH key set up already
+- `g++` 11.4.0
+- `cmake` 2.22.1
+- `make` 4.3
+- your preferred text editor/IDE if you wish to edit the C++ files, header files, or Dockerfile
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## First Steps
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+1. Clone the repo by running the following command `git clone git@git.chalmers.se:courses/dit638/students/2024-group-18.git`
+2. Move into into the *src-repo-folder* that you just cloned by running `cd 2024-group-18/src`
+3. Create a build folder by running `mkdir build`.
+4. Move into the build folder by running `cd build`.
+5. Generate the build files by running `cmake ..`
+6. Build the project by running `make`
 
-## Add your files
+Once those steps are done, if everything is correct, you should see this as the output of the last command:
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
+```bash
+[ 16%] Building CXX object CMakeFiles/helloworld.dir/helloworld.cpp.o
+[ 33%] Building CXX object CMakeFiles/helloworld.dir/PrimeChecker.cpp.o
+[ 50%] Linking CXX executable helloworld
+[ 50%] Built target helloworld
+[ 66%] Building CXX object CMakeFiles/helloworld-Runner.dir/TestPrimeChecker.cpp.o
+[ 83%] Building CXX object CMakeFiles/helloworld-Runner.dir/PrimeChecker.cpp.o
+[100%] Linking CXX executable helloworld-Runner
+[100%] Built target helloworld-Runner
 ```
-cd existing_repo
-git remote add origin https://git.chalmers.se/courses/dit638/students/2024-group-18.git
-git branch -M main
-git push -uf origin main
+
+### Test the project:
+
+```bash
+./helloworld 123
 ```
 
-## Integrate with your tools
+OUTPUT
+```bash
+Group, 18; 123 is a prime number? 0
+```
 
-- [ ] [Set up project integrations](https://git.chalmers.se/courses/dit638/students/2024-group-18/-/settings/integrations)
+### Execute the tests:
 
-## Collaborate with your team
+```bash
+./helloworld-Runner
+```
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+OUTPUT
+```c
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+```
 
-## Test and Deploy
+## Contribution guide
+There are two ways to contribute:
+1. Adding new features
+2. Fixing unexpected behavior in existing features
 
-Use the built-in continuous integration in GitLab.
+### Adding new features
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+Step 1: Create an issue for it, following a specified template and adding appropiate tags.
+ 
+Step 2: Associate the feature with requirement(s) or user stories and define acceptance criteria.
 
-***
+Step 3: Assign yourself as the contributor for the issue and create a new branch off of main for the feature, giving it an appropriate/related name.
 
-# Editing this README
+Step 4: Work on the corresponding feature and commit on the newly created branch by following the [commit template](#commit-template).
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+Step 5: Open a merge request, and request a code review from someone who wasn't a contributor on the feature.
 
-## Suggestions for a good README
+Step 6: If there are any significant changes that need to be done - fix them, then ask for a review again until there are no more issues and the merge request is approved.
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Step 7: Merge the branch into the main branch and solve any merge conflicts that may arise.
 
-## Name
-Choose a self-explaining name for your project.
+### Bug report
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+Step 1: Create an issue for it, following a specified template and adding appropiate tags.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+Step 2: Provide information about the software version, operating system, and platform you are using.
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+Step 3: Provide replication steps and more information about the problem if requested from a contributor.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+### Issue creation & the associated branch
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+#### Issue
+- Title: Concise, giving information about the "what?" of the feature
+- Description: Giving information about the associated requirements, user stories, and acceptance criteria
+- Labels: At a glance categorisation
+- Assignee: The person working on the corresponding issue
+- Deadline: If necessary
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+#### Branch
+- Have issue number at the beginning
+- The name should be in kebab case (e.g. "1-feature-x")
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+### Code review practices
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+When doing code reviews, we follow the guidelines from this [post](https://phauer.com/2018/code-review-guidelines/) from Phillip Hauer's blog. To summarize the points from there:
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+As an author, it is important to understand that mistakes are normal, and any criticism on your code is not directed at you. The team is trying to create a great product, and the reviewer can offer new perspectives on your code.
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+As a reviewer, formulate your feedback as I-statements (I think/believe etc.) instead of you-statements. Referencing your own person and the code rather than the author can help with the impact of criticism. Also, remember that there are always more solutions to a problem, and it's not worth it sometimes to request a change.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+## Commit template
 
-## License
-For open source projects, say how it is licensed.
+The following is a reference material that ensures cohesion between commit messages. The format used is inspired by and uses principles from the lecture "Commits and Code Reviews" (credit to Francisco Gomes de Oliveira Neto) and the ["How to Write a Git Commit Message" article](https://chris.beams.io/posts/git-commit/) by cbeams. These guidelines are slightly adapted from the ones from [our project](https://git.chalmers.se/courses/dit113/2023/group-12/boombox/-/wikis/Commit%20Template) in DIT113.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+Formatting Guidelines
+1. Follow English grammar and orthography unless otherwise stated
+2. Separate subject from body with a blank line
+3. Start the subject line with the Issue ID (e.g. "#1")
+4. Limit the subject line to 50 characters
+5. Use the imperative case for the subject line
+6. Do not end the subject line with a period
+7. Wrap the body at 72 characters
+8. Use the body to explain what and why vs. how
