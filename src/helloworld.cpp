@@ -11,6 +11,7 @@ int main(int argc, char** argv) {
 		// Print out a message to the console
 		std::cout << "Group, 18; " << number << " is a prime number? " << pc.isPrime(number) << std::endl;
 	}
+	std::cout << "Thanks for using the program. Good bye :)\n" << std::endl;
 	// Exit the program
 	return 0;
 }
