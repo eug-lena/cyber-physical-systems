@@ -1,5 +1,6 @@
 #include "PrimeChecker.hpp"
 
+// This method checks if the given number is a prime number or not
 bool PrimeChecker::isPrime(uint16_t n) {
     bool retVal{true};
     if (n<2 || 0 == n%2) {
