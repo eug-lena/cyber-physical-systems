@@ -7,5 +7,6 @@ int main(int argc, char** argv) {
 		PrimeChecker pc;
 		std::cout << "Group, 18; " << number << " is a prime number? " << pc.isPrime(number) << std::endl;
 	}
+	std::cout << "Thanks for using the program. Good bye :)\n" << std::endl;
 	return 0;
 }
