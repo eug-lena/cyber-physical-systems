@@ -1,5 +1,10 @@
 # 2024-group-18
 
+[![pipeline status](https://git.chalmers.se/courses/dit638/students/2024-group-18/badges/main/pipeline.svg)](https://git.chalmers.se/courses/dit638/students/2024-group-18/-/commits/main)
+[![coverage report](https://git.chalmers.se/courses/dit638/students/2024-group-18/badges/main/coverage.svg)](https://git.chalmers.se/courses/dit638/students/2024-group-18/-/commits/main)
+[![Latest Release](https://git.chalmers.se/courses/dit638/students/2024-group-18/-/badges/release.svg)](https://git.chalmers.se/courses/dit638/students/2024-group-18/-/releases)
+
+
 ## Prerequisities
 
 In this project, the tools were installed in `Ubuntu 22.04 LTS`. This can be done through a local boot, subsystem, multipass, virtual box, etc.
