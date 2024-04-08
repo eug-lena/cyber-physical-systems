@@ -2,7 +2,7 @@
 
 [![pipeline status](https://git.chalmers.se/courses/dit638/students/2024-group-18/badges/main/pipeline.svg)](https://git.chalmers.se/courses/dit638/students/2024-group-18/-/commits/main)
 [![coverage report](https://git.chalmers.se/courses/dit638/students/2024-group-18/badges/main/coverage.svg)](https://git.chalmers.se/courses/dit638/students/2024-group-18/-/commits/main)
-[![latest release](https://git.chalmers.se/courses/dit638/students/2024-group-18/badges/main/release.svg)](https://git.chalmers.se/courses/dit638/students/2024-group-18/-/commits/main)
+[![Latest Release](https://git.chalmers.se/courses/dit638/students/2024-group-18/-/badges/release.svg)](https://git.chalmers.se/courses/dit638/students/2024-group-18/-/releases)
 
 
 ## Prerequisities
