@@ -43,6 +43,10 @@ build-and-test:
   stage: build
   script:
     - docker build -f Dockerfile .
+    - docker run --rm -v $(pwd)/coverage:/tmp coverage cp /tmp/coverage.xml /build/coverage.xml
+  artifacts:
+    paths:
+      - tmp/coverage.xml
 
 # This section describes what shall be done to deploy artifacts from the project.
 release:

@@ -19,7 +19,9 @@ RUN cd /opt/sources && \
     mkdir build && \
     cd build && \
     cmake -D CMAKE_BUILD_TYPE=Release .. && \
-    make && make test && cp helloworld /tmp
+    make && make test && cp helloworld /tmp && \
+    gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --root .. && \
+    cp coverage.xml /tmp
 
 ##################################################
 # Section 2: Bundle the application.
@@ -32,4 +34,5 @@ RUN apt-get update -y && \
 
 WORKDIR /opt
 COPY --from=builder /tmp/helloworld .
+COPY --from=builder /tmp/coverage.xml .
 ENTRYPOINT ["/opt/helloworld"]
