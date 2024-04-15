@@ -11,7 +11,7 @@ RUN apt-get install -y --no-install-recommends \
         cmake \
         build-essential
 
-RUN apt install gcovr
+RUN apt install gcovr -y
 
 # Push the src directory to the Docker container
 ADD ./src/ /opt/sources
