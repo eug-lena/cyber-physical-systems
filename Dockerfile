@@ -26,6 +26,7 @@ RUN cd /opt/sources && \
     cmake -D CMAKE_BUILD_TYPE=Release .. && \
     make && make test && cp helloworld /tmp && \
     gcovr --xml-pretty --exclude-unreachable-branches --exclude='.*\.hpp' --exclude='.*usr/include/.*' --exclude='.*Test[A-Z|a-z]*\.cpp' --print-summary -o coverage.xml --root .. && \
+    gcovr --exclude='.*\.hpp' --exclude='.*usr/include/.*' --exclude='.*Test[A-Z|a-z]*\.cpp' --print-summary -r .. && \
     cp coverage.xml /tmp
 
 ##################################################
