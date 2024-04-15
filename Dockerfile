@@ -3,6 +3,9 @@
 FROM ubuntu:22.04 as builder
 MAINTAINER Christian Berger christian.berger@gu.se
 
+# Prevent interactive prompts during package installation (Chat-gpt suggested this)
+ENV DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get update -y && \
     apt-get upgrade -y && \
     apt-get dist-upgrade -y
