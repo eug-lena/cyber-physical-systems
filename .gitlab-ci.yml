@@ -44,6 +44,7 @@ build-and-test:
   script:
     - docker build -f Dockerfile -t "test-build" .
     - docker run --rm -v $(pwd)/coverage:/tmp test-build cp /tmp/coverage.xml /build/coverage.xml
+    - ls
   artifacts:
     paths:
       - tmp/coverage.xml
