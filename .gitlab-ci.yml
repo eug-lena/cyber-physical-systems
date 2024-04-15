@@ -42,12 +42,13 @@ build-and-test:
     - docker-build
   stage: build
   script:
+    - apt-get install -y tree
     - docker build -f Dockerfile -t "test-build" .
     - docker run --rm -v $(pwd)/coverage:/tmp test-build cp /tmp/coverage.xml /build/coverage.xml
-    - ls
+    - tree
   artifacts:
     paths:
-      - tmp/coverage.xml
+      - coverage/coverage.xml
 
 # This section describes what shall be done to deploy artifacts from the project.
 release:
