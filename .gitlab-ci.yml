@@ -50,6 +50,7 @@ build-and-test:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
+  coverage: '/.*lines:\s+(\d+.\d\%)/'
 
 # This section describes what shall be done to deploy artifacts from the project.
 release:
