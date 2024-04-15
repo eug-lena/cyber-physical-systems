@@ -43,8 +43,9 @@ build-and-test:
   stage: build
   script:
     - apk add tree
-    - docker build -f Dockerfile -t "test-build" .
-    - docker run --rm -v $(pwd)/coverage:/tmp test-build cp /tmp/coverage.xml /build/coverage.xml
+    # - docker build -f Dockerfile -t "test-build" .
+    - docker build . --output . --target temp
+    # - docker run --rm -v $(pwd)/coverage:/tmp test-build cp /tmp/coverage.xml /build/coverage.xml
     - tree
   artifacts:
     paths:

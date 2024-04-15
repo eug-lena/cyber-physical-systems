@@ -29,7 +29,12 @@ RUN cd /opt/sources && \
     cp coverage.xml /tmp
 
 ##################################################
-# Section 2: Bundle the application.
+# Section 2: Copy the application to a new image.
+FROM scratch as temp
+COPY --from=builder /tmp/coverage.xml .
+
+##################################################
+# Section 3: Bundle the application.
 FROM ubuntu:22.04
 MAINTAINER Christian Berger christian.berger@gu.se
 
