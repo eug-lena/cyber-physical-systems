@@ -73,6 +73,17 @@ int32_t main(int32_t argc, char **argv)
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
 
+            // Get the distance sensor data
+            opendlv::proxy::DistanceReading distanceReading;
+            std::mutex distanceMutex;
+            auto onDistanceReading = [&distanceReading, &distanceMutex](cluon::data::Envelope &&env)
+            {
+                std::lock_guard<std::mutex> lck(distanceMutex);
+                distanceReading = cluon::extractMessage<opendlv::proxy::DistanceReading>(std::move(env));
+            };
+
+            od4.dataTrigger(opendlv::proxy::DistanceReading::ID(), onDistanceReading);
+
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning())
             {
@@ -104,26 +115,51 @@ int32_t main(int32_t argc, char **argv)
                     currentTimeStamp = cluon::time::toMicroseconds(timeStamp.second);
                 }
 
+                float ground;
+                float distance;
+
+                // If you want to access the latest received ground steering, don't forget to lock the mutex:
+                {
+                    std::lock_guard<std::mutex> lck(gsrMutex);
+                    ground = gsr.groundSteering();
+                    std::cout << "main: groundSteering = " << ground << std::endl;
+                }
+
+                // Distance data
+                {
+                    std::lock_guard<std::mutex> lck(distanceMutex);
+
+                    distance = distanceReading.distance();
+                }
+
                 // Add overlay for current date and time in UTC format
                 cluon::data::TimeStamp now = cluon::time::now();
 
                 std::time_t currentTimeSec = cluon::time::toMicroseconds(now) / 1000000; // Convert microseconds to seconds
                 std::tm *gmtime = std::gmtime(&currentTimeSec);                          // Convert time_t to tm as UTC time
 
-                // Create overlay text
-                std::stringstream ss;
-                ss << "Now:" << std::put_time(gmtime, "%Y-%m-%dT%H:%M:%SZ") << "; ts:" << std::to_string(currentTimeStamp) << "; "
-                   << "Insane Raccoons"
-                   << "; ";
-                std::string overlay_text = ss.str();
+                // OVERLAY METADATA
+                cv::putText(img, "Insane Raccoons", cv::Point(200, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(36, 0, 201), 1);
 
-                cv::putText(img, overlay_text, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(36, 0, 201), 1);
+                std::stringstream metadataStream;
+                metadataStream << "Now:" << std::put_time(gmtime, "%Y-%m-%dT%H:%M:%SZ") << "; ts:" << std::to_string(currentTimeStamp) << "; ";
+                std::string overlayMetadata = metadataStream.str();
 
-                // If you want to access the latest received ground steering, don't forget to lock the mutex:
-                {
-                    std::lock_guard<std::mutex> lck(gsrMutex);
-                    std::cout << "main: groundSteering = " << gsr.groundSteering() << std::endl;
-                }
+                cv::putText(img, overlayMetadata, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
+
+                // OVERLAY DISTANCE
+                std::stringstream distanceStream;
+                distanceStream << "Distance: " << distance << " [meters]";
+                std::string overlayDistance = distanceStream.str();
+
+                cv::putText(img, overlayDistance, cv::Point(10, 100), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
+
+                // OVERLAY GROUND
+                std::stringstream groundStream;
+                groundStream << "Ground Steering: " << ground;
+                std::string overlayGround = groundStream.str();
+
+                cv::putText(img, overlayGround, cv::Point(10, 130), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
 
                 // Display image on your screen.
                 if (VERBOSE)
