@@ -1,5 +1,0 @@
-/home/adrian/Desktop/2024-group-18/src/build/CMakeFiles/helloworld.dir
-/home/adrian/Desktop/2024-group-18/src/build/CMakeFiles/helloworld-Runner.dir
-/home/adrian/Desktop/2024-group-18/src/build/CMakeFiles/test.dir
-/home/adrian/Desktop/2024-group-18/src/build/CMakeFiles/edit_cache.dir
-/home/adrian/Desktop/2024-group-18/src/build/CMakeFiles/rebuild_cache.dir
