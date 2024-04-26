@@ -60,9 +60,29 @@ release:
   tags:
     - docker-build
   stage: deploy
+  # Some parts of these sections were taken from https://gitlab.com/gitlab-org/gitlab-foss/-/issues/41488
+  before_script:
+    - mkdir -p ~/.docker/cli-plugins
+    - wget -O ~/.docker/cli-plugins/docker-buildx $BUILDX_URL
+    - chmod 755 ~/.docker/cli-plugins/docker-buildx
+    - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+    - docker buildx create --use --driver docker-container --name $BUILDX_BUILDER --platform=${BUILDX_PLATFORM}
+    - docker buildx inspect --bootstrap ${BUILDX_BUILDER}
+    - docker buildx ls df -h
+    - docker login -u gitlab-ci-token -p ${CI_JOB_TOKEN} ${CI_REGISTRY}
   script:
-    - docker build -f Dockerfile -t "$CI_REGISTRY_IMAGE":"$CI_COMMIT_TAG" .
-    - docker push "$CI_REGISTRY_IMAGE":"$CI_COMMIT_TAG"
+        # Build the Docker image and push it to the GitLab registry
+    # From assignment 8
+    # - docker build -f Dockerfile -t "$CI_REGISTRY_IMAGE":"$CI_COMMIT_TAG" .
+    # - docker push "$CI_REGISTRY_IMAGE":"$CI_COMMIT_TAG"
+    - docker buildx build --platform $BUILDX_PLATFORM -t "$CI_REGISTRY_IMAGE":"$CI_COMMIT_TAG" --push .
   # Run only when build-and-test is successful
   dependencies:
-    - build-and-test
+        - build-and-test
+  variables:
+    DOCKER_DRIVER: overlay2
+    DOCKER_CLI_EXPERIMENTAL: enabled
+    BUILDX_URL: https://github.com/docker/buildx/releases/download/v0.7.1/buildx-v0.7.1.linux-amd64
+    BUILDX_BUILDER: platformbuilder
+    BUILDX_PLATFORM: linux/amd64,linux/arm/v7
+  
