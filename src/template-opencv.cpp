@@ -24,6 +24,11 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
+// Lower threshold for detecting blue cones 
+cv::Scalar blueLow = cv::Scalar(105, 70, 46);
+// Higher threshold for detecting blue cones 
+cv::Scalar blueHigh = cv::Scalar(149, 255, 144);
+
 int32_t main(int32_t argc, char **argv)
 {
     int32_t retCode{1};
@@ -110,6 +115,34 @@ int32_t main(int32_t argc, char **argv)
                 // TODO: Here, you can add some code to check the sampleTimePoint when the current frame was captured.
                 sharedMemory->unlock();
 
+                // Make a copy of the image
+                cv::Mat imgCopy;
+                img.copyTo(imgCopy);
+
+                // Change the original image into HSV
+                cv::cvtColor(img, img, cv::COLOR_BGR2HSV);
+
+                // Create a mask image
+                cv::Mat mask;
+                // Get pixels that are in range for blue cones
+                cv::inRange(img, blueLow, blueHigh, mask);
+
+                // Initialize an array of contours
+                std::vector <std::vector <cv::Point>> contours;
+                // Find contours from the mask
+                cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+                // Iterate through the contours
+                for(int i = 0; i < contours.size(); i++){
+                    // Create a rectangle out of the vecotrs
+                    cv::Rect rect = cv::boundingRect(contours[i]);
+                    // Check if the rectangle is in the lower part of the frame and is not really small
+                    if(rect.area() > 100 && rect.y > 230){
+                        // Draw the rectangle on the image copy
+                        cv::rectangle(imgCopy, rect.tl(), rect.br(), cv::Scalar(0, 0, 255), 2);
+                    }
+                    
+                }
+
                 if (timeStamp.first)
                 {
                     currentTimeStamp = cluon::time::toMicroseconds(timeStamp.second);
@@ -139,27 +172,27 @@ int32_t main(int32_t argc, char **argv)
                 std::tm *gmtime = std::gmtime(&currentTimeSec);                          // Convert time_t to tm as UTC time
 
                 // OVERLAY METADATA
-                cv::putText(img, "Insane Raccoons", cv::Point(200, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(36, 0, 201), 1);
+                cv::putText(imgCopy, "Insane Raccoons", cv::Point(200, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(36, 0, 201), 1);
 
                 std::stringstream metadataStream;
                 metadataStream << "Now:" << std::put_time(gmtime, "%Y-%m-%dT%H:%M:%SZ") << "; ts:" << std::to_string(currentTimeStamp) << "; ";
                 std::string overlayMetadata = metadataStream.str();
 
-                cv::putText(img, overlayMetadata, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
+                cv::putText(imgCopy, overlayMetadata, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
 
                 // OVERLAY DISTANCE
                 std::stringstream distanceStream;
                 distanceStream << "Distance: " << distance << " [meters]";
                 std::string overlayDistance = distanceStream.str();
 
-                cv::putText(img, overlayDistance, cv::Point(10, 100), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
+                cv::putText(imgCopy, overlayDistance, cv::Point(10, 100), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
 
                 // OVERLAY GROUND
                 std::stringstream groundStream;
                 groundStream << "Ground Steering: " << ground;
                 std::string overlayGround = groundStream.str();
 
-                cv::putText(img, overlayGround, cv::Point(10, 130), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
+                cv::putText(imgCopy, overlayGround, cv::Point(10, 130), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
 
                 // Display image on your screen.
                 if (VERBOSE)
