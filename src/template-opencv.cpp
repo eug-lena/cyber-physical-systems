@@ -25,12 +25,12 @@
 #include <opencv2/imgproc/imgproc.hpp>
 
 // Lower threshold for detecting blue cones
-cv::Scalar blueLow = cv::Scalar(0, 0, 0);
+cv::Scalar blueLow = cv::Scalar(105, 70, 46);
 // Higher threshold for detecting blue cones
-cv::Scalar blueHigh = cv::Scalar(255, 255, 255);
+cv::Scalar blueHigh = cv::Scalar(149, 255, 144);
 
 // Callback function to avoid the warnings
-static void onBlueTrackbar(int a, void *userdata)
+static void onBlueTrackbar(int value, void *userdata)
 {
     int trackbarIndex = reinterpret_cast<intptr_t>(userdata);
 
@@ -38,27 +38,27 @@ static void onBlueTrackbar(int a, void *userdata)
     {
     case 0:
         // Hue Low
-        blueLow[0] = a;
+        blueLow[0] = value;
         break;
     case 1:
         // Hue High
-        blueHigh[0] = a;
+        blueHigh[0] = value;
         break;
     case 2:
         // Saturation Low
-        blueLow[1] = a;
+        blueLow[1] = value;
         break;
     case 3:
         // Saturation High
-        blueHigh[1] = a;
+        blueHigh[1] = value;
         break;
     case 4:
         // Value Low
-        blueLow[2] = a;
+        blueLow[2] = value;
         break;
     case 5:
         // Value High
-        blueHigh[2] = a;
+        blueHigh[2] = value;
         break;
 
     default:
