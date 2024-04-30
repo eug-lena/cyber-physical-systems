@@ -291,7 +291,7 @@ int32_t main(int32_t argc, char **argv)
 
                     if (BLUE)
                     {
-                        cv::imshow("HSV Blue", mask);
+                        cv::imshow("HSV Blue", maskBlue);
                     }
 
                     cv::waitKey(1);
