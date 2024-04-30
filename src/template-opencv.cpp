@@ -28,6 +28,10 @@
 cv::Scalar blueLow = cv::Scalar(105, 70, 46);
 // Higher threshold for detecting blue cones
 cv::Scalar blueHigh = cv::Scalar(149, 255, 144);
+// Lower threshold for detecting yellow cones
+cv::Scalar yellowLow = cv::Scalar(11, 20, 128);
+// Higher threshold for detecting yellow cones
+cv::Scalar yellowHigh = cv::Scalar(54, 198, 232);
 
 // Callback function to avoid the warnings
 static void onBlueTrackbar(int value, void *userdata)
@@ -156,7 +160,7 @@ int32_t main(int32_t argc, char **argv)
             while (od4.isRunning())
             {
                 // OpenCV data structure to hold an image.
-                cv::Mat img;
+                cv::Mat outputImage;
 
                 // TimeStamp variable
                 std::time_t currentTimeStamp;
@@ -170,7 +174,7 @@ int32_t main(int32_t argc, char **argv)
                 {
                     // Copy the pixels from the shared memory into our own data structure.
                     cv::Mat wrapped(HEIGHT, WIDTH, CV_8UC4, sharedMemory->data());
-                    img = wrapped.clone();
+                    outputImage = wrapped.clone();
 
                     // Add TimeStamp
                     timeStamp = sharedMemory->getTimeStamp();
@@ -179,31 +183,53 @@ int32_t main(int32_t argc, char **argv)
                 sharedMemory->unlock();
 
                 // Make a copy of the image
-                cv::Mat imgCopy;
-                img.copyTo(imgCopy);
+                cv::Mat blueImage;
+                outputImage.copyTo(blueImage);
+                cv::Mat yellowImage;
+                outputImage.copyTo(yellowImage);
 
                 // Change the original image into HSV
-                cv::cvtColor(img, img, cv::COLOR_BGR2HSV);
+                cv::cvtColor(outputImage, blueImage, cv::COLOR_BGR2HSV);
+                cv::cvtColor(outputImage, yellowImage, cv::COLOR_BGR2HSV);
 
                 // Create a mask image
-                cv::Mat mask;
+                cv::Mat maskBlue;
+                cv::Mat maskYellow;
                 // Get pixels that are in range for blue cones
-                cv::inRange(img, blueLow, blueHigh, mask);
+                cv::inRange(blueImage, blueLow, blueHigh, maskBlue);
+                cv::inRange(yellowImage, yellowLow, yellowHigh, maskYellow);
 
                 // Initialize an array of contours
-                std::vector<std::vector<cv::Point>> contours;
+                std::vector <std::vector <cv::Point>> contoursBlue;
+                std::vector <std::vector <cv::Point>> contoursYellow;
+
                 // Find contours from the mask
-                cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-                // Iterate through the contours
-                for (int i = 0; i < contours.size(); i++)
-                {
-                    // Create a rectangle out of the vecotrs
-                    cv::Rect rect = cv::boundingRect(contours[i]);
+                cv::findContours(maskBlue, contoursBlue, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+                cv::findContours(maskYellow, contoursYellow, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+                // Iterate through the blue contours
+                for(int i = 0; i < contoursBlue.size(); i++){
+                    // Create a rectangle out of the vectors
+                    cv::Rect rect = cv::boundingRect(contoursBlue[i]);
                     // Check if the rectangle is in the lower part of the frame and is not really small
-                    if (rect.area() > 100 && rect.y > 230)
-                    {
-                        // Draw the rectangle on the image copy
-                        cv::rectangle(imgCopy, rect.tl(), rect.br(), cv::Scalar(0, 0, 255), 2);
+                    if(rect.area() > 100 && rect.y > 230){
+                        // Draw the rectangle on the output image 
+                        cv::rectangle(outputImage, rect.tl(), rect.br(), cv::Scalar(255, 0, 0), 2);
+                    }
+                }
+
+                // Iterate through the yellow contours
+                for(int i = 0; i < contoursYellow.size(); i++){
+                    // Create a rectangle out of the vectors
+                    cv::Rect rect = cv::boundingRect(contoursYellow[i]);
+                    // Check if the rectangle is in the lower part of the frame and is not really small
+                    if(rect.area() > 100 && rect.x > 150 && rect.y > 230 && rect.y < 450 && (rect.x > 390 || rect.x < 340)){
+                        // Draw the rectangle on the output image 
+                        cv::rectangle(outputImage, rect.tl(), rect.br(), cv::Scalar(0, 255, 255), 2);
+                        // print out the position of the rectangle
+                        std::cout << "Yellow Cone at: " << rect.x << ", " << rect.y << std::endl;
+                        std::cout << "Yellow Cone size: " << rect.area() << std::endl;
+
                     }
                 }
 
@@ -236,32 +262,32 @@ int32_t main(int32_t argc, char **argv)
                 std::tm *gmtime = std::gmtime(&currentTimeSec);                          // Convert time_t to tm as UTC time
 
                 // OVERLAY METADATA
-                cv::putText(imgCopy, "Insane Raccoons", cv::Point(200, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(36, 0, 201), 1);
+                cv::putText(outputImage, "Insane Raccoons", cv::Point(200, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(36, 0, 201), 1);
 
                 std::stringstream metadataStream;
                 metadataStream << "Now:" << std::put_time(gmtime, "%Y-%m-%dT%H:%M:%SZ") << "; ts:" << std::to_string(currentTimeStamp) << "; ";
                 std::string overlayMetadata = metadataStream.str();
 
-                cv::putText(imgCopy, overlayMetadata, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
+                cv::putText(outputImage, overlayMetadata, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
 
                 // OVERLAY DISTANCE
                 std::stringstream distanceStream;
                 distanceStream << "Distance: " << distance << " [meters]";
                 std::string overlayDistance = distanceStream.str();
 
-                cv::putText(imgCopy, overlayDistance, cv::Point(10, 100), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
+                cv::putText(outputImage, overlayDistance, cv::Point(10, 100), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
 
                 // OVERLAY GROUND
                 std::stringstream groundStream;
                 groundStream << "Ground Steering: " << ground;
                 std::string overlayGround = groundStream.str();
 
-                cv::putText(imgCopy, overlayGround, cv::Point(10, 130), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
+                cv::putText(outputImage, overlayGround, cv::Point(10, 130), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
 
                 // Display image on your screen.
                 if (VERBOSE)
                 {
-                    cv::imshow(sharedMemory->name().c_str(), imgCopy);
+                    cv::imshow(sharedMemory->name().c_str(), outputImage);
 
                     if (BLUE)
                     {
