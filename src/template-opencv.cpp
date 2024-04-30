@@ -208,23 +208,28 @@ int32_t main(int32_t argc, char **argv)
                 cv::findContours(maskYellow, contoursYellow, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
                 // Iterate through the blue contours
-                for(int i = 0; i < contoursBlue.size(); i++){
+                for(size_t i = 0; i < contoursBlue.size(); i++){
                     // Create a rectangle out of the vectors
                     cv::Rect rect = cv::boundingRect(contoursBlue[i]);
                     // Check if the rectangle is in the lower part of the frame and is not really small
                     if(rect.area() > 100 && rect.y > 230){
                         // Draw the rectangle on the output image 
+                        // Start point
+                        cv::Point center = (rect.tl() + rect.br()) / 2;
+                        cv::line(outputImage, center, cv::Point(WIDTH/2, HEIGHT), cv::Scalar(0, 255, 0), 3);
                         cv::rectangle(outputImage, rect.tl(), rect.br(), cv::Scalar(255, 0, 0), 2);
                     }
                 }
 
                 // Iterate through the yellow contours
-                for(int i = 0; i < contoursYellow.size(); i++){
+                for(size_t i = 0; i < contoursYellow.size(); i++){
                     // Create a rectangle out of the vectors
                     cv::Rect rect = cv::boundingRect(contoursYellow[i]);
                     // Check if the rectangle is in the lower part of the frame and is not really small
                     if(rect.area() > 100 && rect.x > 150 && rect.y > 230 && rect.y < 450 && (rect.x > 390 || rect.x < 340)){
-                        // Draw the rectangle on the output image 
+                        // Draw the rectangle on the output image
+                        cv::Point center = (rect.tl() + rect.br()) / 2;
+                        cv::line(outputImage, center, cv::Point(WIDTH/2, HEIGHT), cv::Scalar(0, 255, 0), 3);
                         cv::rectangle(outputImage, rect.tl(), rect.br(), cv::Scalar(0, 255, 255), 2);
                         // print out the position of the rectangle
                         std::cout << "Yellow Cone at: " << rect.x << ", " << rect.y << std::endl;
