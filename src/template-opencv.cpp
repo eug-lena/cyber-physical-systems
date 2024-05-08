@@ -24,18 +24,56 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
-// Lower threshold for detecting blue cones 
+// Lower threshold for detecting blue cones
 cv::Scalar blueLow = cv::Scalar(105, 70, 46);
-// Higher threshold for detecting blue cones 
+// Higher threshold for detecting blue cones
 cv::Scalar blueHigh = cv::Scalar(149, 255, 144);
 // Lower threshold for detecting yellow cones
 cv::Scalar yellowLow = cv::Scalar(11, 20, 128);
 // Higher threshold for detecting yellow cones
 cv::Scalar yellowHigh = cv::Scalar(54, 198, 232);
 
+// Callback function to avoid the warnings
+static void onBlueTrackbar(int value, void *userdata)
+{
+    int trackbarIndex = reinterpret_cast<intptr_t>(userdata);
+
+    switch (trackbarIndex)
+    {
+    case 0:
+        // Hue Low
+        blueLow[0] = value;
+        break;
+    case 1:
+        // Hue High
+        blueHigh[0] = value;
+        break;
+    case 2:
+        // Saturation Low
+        blueLow[1] = value;
+        break;
+    case 3:
+        // Saturation High
+        blueHigh[1] = value;
+        break;
+    case 4:
+        // Value Low
+        blueLow[2] = value;
+        break;
+    case 5:
+        // Value High
+        blueHigh[2] = value;
+        break;
+
+    default:
+        break;
+    }
+}
+
 int32_t main(int32_t argc, char **argv)
 {
     int32_t retCode{1};
+
     // Parse the command line parameters as we require the user to specify some mandatory information on startup.
     auto commandlineArguments = cluon::getCommandlineArguments(argc, argv);
     if ((0 == commandlineArguments.count("cid")) ||
@@ -58,6 +96,31 @@ int32_t main(int32_t argc, char **argv)
         const uint32_t WIDTH{static_cast<uint32_t>(std::stoi(commandlineArguments["width"]))};
         const uint32_t HEIGHT{static_cast<uint32_t>(std::stoi(commandlineArguments["height"]))};
         const bool VERBOSE{commandlineArguments.count("verbose") != 0};
+        const bool BLUE{commandlineArguments.count("blue") != 0};
+
+        // If the blue command argument is passed, we debug the blue detection
+        if (BLUE)
+        {
+            cv::namedWindow("HSV Blue", cv::WINDOW_NORMAL);
+
+            cv::createTrackbar("Hue - low", "HSV Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(0));
+            cv::setTrackbarPos("Hue - low", "HSV Blue", static_cast<int>(blueLow[0]));
+
+            cv::createTrackbar("Hue - high", "HSV Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(1));
+            cv::setTrackbarPos("Hue - high", "HSV Blue", static_cast<int>(blueHigh[0]));
+
+            cv::createTrackbar("Sat - low", "HSV Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(2));
+            cv::setTrackbarPos("Sat - low", "HSV Blue", static_cast<int>(blueLow[1]));
+
+            cv::createTrackbar("Sat - high", "HSV Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(3));
+            cv::setTrackbarPos("Sat - high", "HSV Blue", static_cast<int>(blueHigh[1]));
+
+            cv::createTrackbar("Val - low", "HSV Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(4));
+            cv::setTrackbarPos("Val - low", "HSV Blue", static_cast<int>(blueLow[2]));
+
+            cv::createTrackbar("Val - high", "HSV Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(5));
+            cv::setTrackbarPos("Val - high", "HSV Blue", static_cast<int>(blueHigh[2]));
+        }
 
         // Attach to the shared memory.
         std::unique_ptr<cluon::SharedMemory> sharedMemory{new cluon::SharedMemory{NAME}};
