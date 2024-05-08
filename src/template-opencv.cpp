@@ -160,7 +160,7 @@ int32_t main(int32_t argc, char **argv)
                     // Create a rectangle out of the vectors
                     cv::Rect rect = cv::boundingRect(contoursYellow[i]);
                     // Check if the rectangle is in the lower part of the frame and is not really small
-                    if(rect.area() > 100 && rect.x > 150 && rect.y > 230 && rect.y < 450 && (rect.x > 390 || rect.x < 340)){
+                    if(rect.area() > 100 && rect.y > 230 && rect.y < 450 && (rect.x > 390 || rect.x < 340)){
                         // Draw the rectangle on the output image 
                         cv::rectangle(outputImage, rect.tl(), rect.br(), cv::Scalar(0, 255, 255), 2);
                         // print out the position of the rectangle
