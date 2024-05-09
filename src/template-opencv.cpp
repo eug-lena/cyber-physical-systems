@@ -161,6 +161,9 @@ int32_t main(int32_t argc, char **argv)
             float steadyStateError = 0;
             float rateOfChangeError = 0;
 
+            std::stringstream csv_stream;
+            csv_stream << "timestamp,originalGroundSteering,ourGroundSteering\n";
+
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning())
             {
@@ -282,11 +285,6 @@ int32_t main(int32_t argc, char **argv)
 
                 previousError = error;
 
-                // | ---- x ----------- | -> (R-L) >= 0 -> Wrong one
-                // | ---- x ----------- | -> (L-R) <= 0 -> Correct one
-                // negative -> turn right, positive -> turn left
-
-
                 if (timeStamp.first) {
                     currentTimeStamp = cluon::time::toMicroseconds(timeStamp.second);
                 }
@@ -350,8 +348,11 @@ int32_t main(int32_t argc, char **argv)
                     cv::waitKey(1);
                 }
 
-                std::cout << "group_18;" << std::to_string(currentTimeStamp) << ";" << error << std::endl;
+                // std::cout << "group_18;" << std::to_string(currentTimeStamp) << ";" << error << std::endl;
+                csv_stream << ground << "," << output << "\n";
             }
+
+            std::cout << csv_stream.str();
         }
         retCode = 0;
     }
