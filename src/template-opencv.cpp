@@ -25,9 +25,9 @@
 #include <opencv2/imgproc/imgproc.hpp>
 
 // Lower threshold for detecting blue cones
-cv::Scalar blueLow = cv::Scalar(105, 70, 46);
+cv::Scalar blueLow = cv::Scalar(107, 111, 45);
 // Higher threshold for detecting blue cones
-cv::Scalar blueHigh = cv::Scalar(149, 255, 144);
+cv::Scalar blueHigh = cv::Scalar(140, 155, 86);
 // Lower threshold for detecting yellow cones
 cv::Scalar yellowLow = cv::Scalar(11, 20, 128);
 // Higher threshold for detecting yellow cones
@@ -184,9 +184,7 @@ int32_t main(int32_t argc, char **argv)
 
                 // Make a copy of the image
                 cv::Mat blueImage;
-                outputImage.copyTo(blueImage);
                 cv::Mat yellowImage;
-                outputImage.copyTo(yellowImage);
 
                 // Change the original image into HSV
                 cv::cvtColor(outputImage, blueImage, cv::COLOR_BGR2HSV);
@@ -200,36 +198,61 @@ int32_t main(int32_t argc, char **argv)
                 cv::inRange(yellowImage, yellowLow, yellowHigh, maskYellow);
 
                 // Initialize an array of contours
-                std::vector <std::vector <cv::Point>> contoursBlue;
-                std::vector <std::vector <cv::Point>> contoursYellow;
+                std::vector<std::vector<cv::Point>> contoursBlue;
+                std::vector<std::vector<cv::Point>> contoursYellow;
+
+                // Blur image to reduce noise
+                cv::GaussianBlur(maskBlue, maskBlue, cv::Size(5, 5), 0);
+                // cv::medianBlur(maskBlue, maskBlue, 5);
+                // maskBlue.convertTo(maskBlue, CV_8UC1);
+                // cv::Mat maskBlueFiltered;
+                // cv::bilateralFilter(maskBlue, maskBlueFiltered, 9, 75, 75);
+                // cv::bilateralFilter(maskBlue, maskBlue, 9, 75, 75);
+
+                // Closing the image to improve quality
+                cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(10, 10));
+                cv::morphologyEx(maskBlue, maskBlue, cv::MORPH_CLOSE, element);
+
+                // Perform a bitwise operation on the original image and the mask
+                cv::Mat test;
+                cv::bitwise_and(outputImage, outputImage, test, maskBlue);
+
+                // Convert the test image to grayscale
+                cv::cvtColor(test, test, cv::COLOR_BGR2GRAY);
+
+                // Apply a threshold to the test
+                cv::threshold(test, test, 30, 255, cv::THRESH_BINARY);
 
                 // Find contours from the mask
-                cv::findContours(maskBlue, contoursBlue, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+                cv::findContours(test, contoursBlue, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
                 cv::findContours(maskYellow, contoursYellow, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
                 // Iterate through the blue contours
-                for(int i = 0; i < contoursBlue.size(); i++){
+                for (size_t i = 0; i < contoursBlue.size(); i++)
+                {
                     // Create a rectangle out of the vectors
                     cv::Rect rect = cv::boundingRect(contoursBlue[i]);
                     // Check if the rectangle is in the lower part of the frame and is not really small
-                    if(rect.area() > 100 && rect.y > 230){
-                        // Draw the rectangle on the output image 
+                    if (rect.area() > 100 && rect.y > 230)
+                    {
+                        // Draw the rectangle on the output image
                         cv::rectangle(outputImage, rect.tl(), rect.br(), cv::Scalar(255, 0, 0), 2);
                     }
                 }
 
                 // Iterate through the yellow contours
-                for(int i = 0; i < contoursYellow.size(); i++){
+                for (size_t i = 0; i < contoursYellow.size(); i++)
+                {
                     // Create a rectangle out of the vectors
                     cv::Rect rect = cv::boundingRect(contoursYellow[i]);
                     // Check if the rectangle is in the lower part of the frame and is not really small
-                    if(rect.area() > 100 && rect.y > 230 && rect.y < 450 && (rect.x > 390 || rect.x < 340)){
-                        // Draw the rectangle on the output image 
+                    if (rect.area() > 100 && rect.y > 230 && rect.y < 450 && (rect.x > 390 || rect.x < 340))
+                    {
+                        // Draw the rectangle on the output image
                         cv::rectangle(outputImage, rect.tl(), rect.br(), cv::Scalar(0, 255, 255), 2);
                         // print out the position of the rectangle
                         std::cout << "Yellow Cone at: " << rect.x << ", " << rect.y << std::endl;
                         std::cout << "Yellow Cone size: " << rect.area() << std::endl;
-
                     }
                 }
 
@@ -289,6 +312,12 @@ int32_t main(int32_t argc, char **argv)
                 {
                     cv::imshow(sharedMemory->name().c_str(), outputImage);
                     cv::waitKey(1);
+
+                    if (BLUE)
+                    {
+                        cv::imshow("HSV Blue", maskBlue);
+                        cv::imshow("HSV Blue Test", test);
+                    }
                 }
             }
         }
