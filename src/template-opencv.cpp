@@ -37,8 +37,7 @@ cv::Scalar yellowHigh = cv::Scalar(54, 198, 232);
 static void onBlueTrackbar(int value, void *userdata) {
     int trackbarIndex = reinterpret_cast<intptr_t>(userdata);
 
-    switch (trackbarIndex)
-    {
+    switch (trackbarIndex) {
     case 0:
         // Hue Low
         blueLow[0] = value;
@@ -190,15 +189,10 @@ int32_t main(int32_t argc, char **argv) {
                 cv::Mat maskBlue;
                 cv::Mat maskYellow;
 
-                // Create a new mask of the same size as your image, initialize it to white
-                cv::Mat mask = cv::Mat::ones(outputImage.size(), CV_8U) * 255;
-
-                // Create a black rectangle from y=230 to the bottom of the image
-                cv::rectangle(mask, cv::Point(0, 0), cv::Point(mask.cols, 230), cv::Scalar(0), -1);
-
                 // Create a region of interest (ROI) to focus on the bottom part of the image
-                // cv::Rect roi(0, 230, 640, 250); // x, y, width, height
-                // cv::Mat frameROI = frame(roi);
+                int roiHeight = outputImage.rows - 230;
+                cv::Rect roi(0, 230, outputImage.cols, roiHeight); // x, y, width, height
+                cv::Mat imageROI = outputImage(roi);
 
                 // Get pixels that are in range for blue cones
                 cv::inRange(blueImage, blueLow, blueHigh, maskBlue);
@@ -220,9 +214,6 @@ int32_t main(int32_t argc, char **argv) {
                     if(rect.area() > 100) {
                         // Draw the rectangle on the output image 
                         cv::rectangle(outputImage, rect.tl(), rect.br(), cv::Scalar(255, 0, 0), 2);
-                        // print out the position of the rectangle
-                        // std::cout << "Blue Cone at: " << rect.x << ", " << rect.y << std::endl;
-                        // std::cout << "Blue Cone size: " << rect.area() << std::endl;
                     }
                 }
 
@@ -234,9 +225,6 @@ int32_t main(int32_t argc, char **argv) {
                     if(rect.area() > 100 && rect.y < 450 && (rect.x > 390 || rect.x < 340)){
                         // Draw the rectangle on the output image 
                         cv::rectangle(outputImage, rect.tl(), rect.br(), cv::Scalar(0, 255, 255), 2);
-                        // print out the position of the rectangle
-                        // std::cout << "Yellow Cone at: " << rect.x << ", " << rect.y << std::endl;
-                        // std::cout << "Yellow Cone size: " << rect.area() << std::endl;
                     }
                 }
 
@@ -290,13 +278,9 @@ int32_t main(int32_t argc, char **argv) {
 
                 cv::putText(outputImage, overlayGround, cv::Point(10, 130), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
 
-                // Create a new image that is the result of the bitwise_and operation between the original image and the mask
-                cv::Mat result;
-                cv::bitwise_and(outputImage, outputImage, result, mask);
-
                 // Display image on your screen.
                 if (VERBOSE) {
-                    cv::imshow(sharedMemory->name().c_str(), result);
+                    cv::imshow(sharedMemory->name().c_str(), imageROI);
                     if (BLUE) {
                         cv::imshow("HSV Blue", maskBlue);
                     }
