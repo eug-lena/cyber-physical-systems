@@ -33,6 +33,16 @@ cv::Scalar yellowLow = cv::Scalar(11, 20, 128);
 // Higher threshold for detecting yellow cones
 cv::Scalar yellowHigh = cv::Scalar(54, 198, 232);
 
+// Blue threshold
+int blueThreshold = 30;
+// Blue max value
+int blueMaxValue = 255;
+
+// Yellow threshold
+int yellowThreshold = 30;
+// Yellow max value
+int yellowMaxValue = 255;
+
 // Callback function to avoid the warnings
 static void onBlueTrackbar(int value, void *userdata)
 {
@@ -64,10 +74,91 @@ static void onBlueTrackbar(int value, void *userdata)
         // Value High
         blueHigh[2] = value;
         break;
-
+    case 6:
+        // Threshold
+        blueThreshold = value;
+        break;
+    case 7:
+        // Max value
+        blueMaxValue = value;
+        break;
     default:
         break;
     }
+}
+
+static void onYellowTrackbar(int value, void *userdata)
+{
+    int trackbarIndex = reinterpret_cast<intptr_t>(userdata);
+
+    switch (trackbarIndex)
+    {
+    case 0:
+        // Hue Low
+        yellowLow[0] = value;
+        break;
+    case 1:
+        // Hue High
+        yellowHigh[0] = value;
+        break;
+    case 2:
+        // Saturation Low
+        yellowLow[1] = value;
+        break;
+    case 3:
+        // Saturation High
+        yellowHigh[1] = value;
+        break;
+    case 4:
+        // Value Low
+        yellowLow[2] = value;
+        break;
+    case 5:
+        // Value High
+        yellowHigh[2] = value;
+        break;
+    case 6:
+        // Threshold
+        yellowThreshold = value;
+        break;
+    case 7:
+        // Max value
+        yellowMaxValue = value;
+        break;
+    default:
+        break;
+    }
+}
+
+void denoiseImage(cv::Mat &originalImage, cv::Mat &colorMask, cv::Mat &processedImage, int thresholdValue, int maxValue)
+{
+    // Create a copy of the colorMask to preserve the original data
+    cv::Mat colorMaskCopy;
+    colorMask.copyTo(colorMaskCopy);
+
+    // Apply Gaussian Blur to the color mask to reduce noise
+    cv::GaussianBlur(colorMaskCopy, colorMaskCopy, cv::Size(5, 5), 0);
+
+    // Apply Closing operation to the color mask to improve quality
+    cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
+    cv::morphologyEx(colorMaskCopy, colorMaskCopy, cv::MORPH_CLOSE, element);
+
+    // Create a mask to ignore the car at the bottom-center of the image
+    cv::Mat mask = cv::Mat::ones(originalImage.size(), CV_8U);
+    cv::Rect ignoreRegion(mask.cols / 4, 3 * mask.rows / 4, mask.cols / 2, mask.rows / 4);
+    mask(ignoreRegion) = 0;
+
+    // Apply the mask to the colorMaskCopy
+    colorMaskCopy = colorMaskCopy & mask;
+
+    // Perform a Bitwise And operation to extract the color information from the original image
+    cv::bitwise_and(originalImage, originalImage, processedImage, colorMaskCopy);
+
+    // Convert the processed image to Grayscale
+    cv::cvtColor(processedImage, processedImage, cv::COLOR_BGR2GRAY);
+
+    // Apply a Threshold to the processed image
+    cv::threshold(processedImage, processedImage, thresholdValue, maxValue, cv::THRESH_BINARY);
 }
 
 int32_t main(int32_t argc, char **argv)
@@ -97,29 +188,70 @@ int32_t main(int32_t argc, char **argv)
         const uint32_t HEIGHT{static_cast<uint32_t>(std::stoi(commandlineArguments["height"]))};
         const bool VERBOSE{commandlineArguments.count("verbose") != 0};
         const bool BLUE{commandlineArguments.count("blue") != 0};
+        const bool YELLOW{commandlineArguments.count("yellow") != 0};
 
         // If the blue command argument is passed, we debug the blue detection
         if (BLUE)
         {
-            cv::namedWindow("HSV Blue", cv::WINDOW_NORMAL);
+            cv::namedWindow("Mask Blue", cv::WINDOW_NORMAL);
 
-            cv::createTrackbar("Hue - low", "HSV Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(0));
-            cv::setTrackbarPos("Hue - low", "HSV Blue", static_cast<int>(blueLow[0]));
+            cv::createTrackbar("Hue - low", "Mask Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(0));
+            cv::setTrackbarPos("Hue - low", "Mask Blue", static_cast<int>(blueLow[0]));
 
-            cv::createTrackbar("Hue - high", "HSV Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(1));
-            cv::setTrackbarPos("Hue - high", "HSV Blue", static_cast<int>(blueHigh[0]));
+            cv::createTrackbar("Hue - high", "Mask Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(1));
+            cv::setTrackbarPos("Hue - high", "Mask Blue", static_cast<int>(blueHigh[0]));
 
-            cv::createTrackbar("Sat - low", "HSV Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(2));
-            cv::setTrackbarPos("Sat - low", "HSV Blue", static_cast<int>(blueLow[1]));
+            cv::createTrackbar("Sat - low", "Mask Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(2));
+            cv::setTrackbarPos("Sat - low", "Mask Blue", static_cast<int>(blueLow[1]));
 
-            cv::createTrackbar("Sat - high", "HSV Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(3));
-            cv::setTrackbarPos("Sat - high", "HSV Blue", static_cast<int>(blueHigh[1]));
+            cv::createTrackbar("Sat - high", "Mask Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(3));
+            cv::setTrackbarPos("Sat - high", "Mask Blue", static_cast<int>(blueHigh[1]));
 
-            cv::createTrackbar("Val - low", "HSV Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(4));
-            cv::setTrackbarPos("Val - low", "HSV Blue", static_cast<int>(blueLow[2]));
+            cv::createTrackbar("Val - low", "Mask Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(4));
+            cv::setTrackbarPos("Val - low", "Mask Blue", static_cast<int>(blueLow[2]));
 
-            cv::createTrackbar("Val - high", "HSV Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(5));
-            cv::setTrackbarPos("Val - high", "HSV Blue", static_cast<int>(blueHigh[2]));
+            cv::createTrackbar("Val - high", "Mask Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(5));
+            cv::setTrackbarPos("Val - high", "Mask Blue", static_cast<int>(blueHigh[2]));
+
+            cv::namedWindow("Processed Blue", cv::WINDOW_NORMAL);
+
+            cv::createTrackbar("Threshold", "Processed Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(6));
+            cv::setTrackbarPos("Threshold", "Processed Blue", blueThreshold);
+
+            cv::createTrackbar("Max Value", "Processed Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(7));
+            cv::setTrackbarPos("Max Value", "Processed Blue", blueMaxValue);
+        }
+
+        // If the yellow command argument is passed, we debug the yellow detection
+        if (YELLOW)
+        {
+            cv::namedWindow("Mask Yellow", cv::WINDOW_NORMAL);
+
+            cv::createTrackbar("Hue - low", "Mask Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(0));
+            cv::setTrackbarPos("Hue - low", "Mask Yellow", static_cast<int>(yellowLow[0]));
+
+            cv::createTrackbar("Hue - high", "Mask Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(1));
+            cv::setTrackbarPos("Hue - high", "Mask Yellow", static_cast<int>(yellowHigh[0]));
+
+            cv::createTrackbar("Sat - low", "Mask Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(2));
+            cv::setTrackbarPos("Sat - low", "Mask Yellow", static_cast<int>(yellowLow[1]));
+
+            cv::createTrackbar("Sat - high", "Mask Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(3));
+            cv::setTrackbarPos("Sat - high", "Mask Yellow", static_cast<int>(yellowHigh[1]));
+
+            cv::createTrackbar("Val - low", "Mask Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(4));
+            cv::setTrackbarPos("Val - low", "Mask Yellow", static_cast<int>(yellowLow[2]));
+
+            cv::createTrackbar("Val - high", "Mask Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(5));
+            cv::setTrackbarPos("Val - high", "Mask Yellow", static_cast<int>(yellowHigh[2]));
+
+            cv::namedWindow("Processed Yellow", cv::WINDOW_NORMAL);
+
+            cv::createTrackbar("Threshold", "Processed Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(6));
+            cv::setTrackbarPos("Threshold", "Processed Yellow", yellowThreshold);
+
+            cv::createTrackbar("Max Value", "Processed Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(7));
+            cv::setTrackbarPos("Max Value", "Processed Yellow", yellowMaxValue);
         }
 
         // Attach to the shared memory.
@@ -182,50 +314,37 @@ int32_t main(int32_t argc, char **argv)
                 // TODO: Here, you can add some code to check the sampleTimePoint when the current frame was captured.
                 sharedMemory->unlock();
 
-                // Make a copy of the image
+                // Create HSV images
                 cv::Mat blueImage;
                 cv::Mat yellowImage;
 
-                // Change the original image into HSV
+                // Convert the original image from the BGR space to the HSV space
                 cv::cvtColor(outputImage, blueImage, cv::COLOR_BGR2HSV);
                 cv::cvtColor(outputImage, yellowImage, cv::COLOR_BGR2HSV);
 
-                // Create a mask image
+                // Create masked images
                 cv::Mat maskBlue;
                 cv::Mat maskYellow;
+
                 // Get pixels that are in range for blue cones
                 cv::inRange(blueImage, blueLow, blueHigh, maskBlue);
                 cv::inRange(yellowImage, yellowLow, yellowHigh, maskYellow);
+
+                // Create processed images
+                cv::Mat processedBlue;
+                cv::Mat processedYellow;
+
+                // Denoise processed images
+                denoiseImage(outputImage, maskBlue, processedBlue, blueThreshold, blueMaxValue);
+                denoiseImage(outputImage, maskYellow, processedYellow, yellowThreshold, yellowMaxValue);
 
                 // Initialize an array of contours
                 std::vector<std::vector<cv::Point>> contoursBlue;
                 std::vector<std::vector<cv::Point>> contoursYellow;
 
-                // Blur image to reduce noise
-                cv::GaussianBlur(maskBlue, maskBlue, cv::Size(5, 5), 0);
-                // cv::medianBlur(maskBlue, maskBlue, 5);
-                // maskBlue.convertTo(maskBlue, CV_8UC1);
-                // cv::Mat maskBlueFiltered;
-                // cv::bilateralFilter(maskBlue, maskBlueFiltered, 9, 75, 75);
-                // cv::bilateralFilter(maskBlue, maskBlue, 9, 75, 75);
-
-                // Closing the image to improve quality
-                cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(10, 10));
-                cv::morphologyEx(maskBlue, maskBlue, cv::MORPH_CLOSE, element);
-
-                // Perform a bitwise operation on the original image and the mask
-                cv::Mat test;
-                cv::bitwise_and(outputImage, outputImage, test, maskBlue);
-
-                // Convert the test image to grayscale
-                cv::cvtColor(test, test, cv::COLOR_BGR2GRAY);
-
-                // Apply a threshold to the test
-                cv::threshold(test, test, 30, 255, cv::THRESH_BINARY);
-
                 // Find contours from the mask
-                cv::findContours(test, contoursBlue, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-                cv::findContours(maskYellow, contoursYellow, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+                cv::findContours(processedBlue, contoursBlue, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+                cv::findContours(processedYellow, contoursYellow, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
                 // Iterate through the blue contours
                 for (size_t i = 0; i < contoursBlue.size(); i++)
@@ -315,8 +434,14 @@ int32_t main(int32_t argc, char **argv)
 
                     if (BLUE)
                     {
-                        cv::imshow("HSV Blue", maskBlue);
-                        cv::imshow("HSV Blue Test", test);
+                        cv::imshow("Mask Blue", maskBlue);
+                        cv::imshow("Processed Blue", processedBlue);
+                    }
+
+                    if (YELLOW)
+                    {
+                        cv::imshow("Mask Yellow", maskYellow);
+                        cv::imshow("Processed Yellow", processedYellow);
                     }
                 }
             }
