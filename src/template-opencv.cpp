@@ -46,12 +46,10 @@ int yellowThreshold = 30;
 int yellowMaxValue = 255;
 
 // Callback function to avoid the warnings
-static void onBlueTrackbar(int value, void *userdata)
-{
+static void onBlueTrackbar(int value, void *userdata) {
     int trackbarIndex = reinterpret_cast<intptr_t>(userdata);
 
-    switch (trackbarIndex)
-    {
+    switch (trackbarIndex) {
     case 0:
         // Hue Low
         blueLow[0] = value;
@@ -132,8 +130,7 @@ static void onYellowTrackbar(int value, void *userdata)
     }
 }
 
-int32_t main(int32_t argc, char **argv)
-{
+int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
 
     // Parse the command line parameters as we require the user to specify some mandatory information on startup.
@@ -141,8 +138,8 @@ int32_t main(int32_t argc, char **argv)
     if ((0 == commandlineArguments.count("cid")) ||
         (0 == commandlineArguments.count("name")) ||
         (0 == commandlineArguments.count("width")) ||
-        (0 == commandlineArguments.count("height")))
-    {
+        (0 == commandlineArguments.count("height"))) {
+
         std::cerr << argv[0] << " attaches to a shared memory area containing an ARGB image." << std::endl;
         std::cerr << "Usage:   " << argv[0] << " --cid=<OD4 session> --name=<name of shared memory area> [--verbose]" << std::endl;
         std::cerr << "         --cid:    CID of the OD4Session to send and receive messages" << std::endl;
@@ -151,8 +148,7 @@ int32_t main(int32_t argc, char **argv)
         std::cerr << "         --height: height of the frame" << std::endl;
         std::cerr << "Example: " << argv[0] << " --cid=253 --name=img --width=640 --height=480 --verbose" << std::endl;
     }
-    else
-    {
+    else {
         // Extract the values from the command line parameters
         const std::string NAME{commandlineArguments["name"]};
         const uint32_t WIDTH{static_cast<uint32_t>(std::stoi(commandlineArguments["width"]))};
@@ -227,8 +223,7 @@ int32_t main(int32_t argc, char **argv)
 
         // Attach to the shared memory.
         std::unique_ptr<cluon::SharedMemory> sharedMemory{new cluon::SharedMemory{NAME}};
-        if (sharedMemory && sharedMemory->valid())
-        {
+        if (sharedMemory && sharedMemory->valid()) {
             std::clog << argv[0] << ": Attached to shared memory '" << sharedMemory->name() << " (" << sharedMemory->size() << " bytes)." << std::endl;
 
             // Interface to a running OpenDaVINCI session where network messages are exchanged.
@@ -260,8 +255,7 @@ int32_t main(int32_t argc, char **argv)
             od4.dataTrigger(opendlv::proxy::DistanceReading::ID(), onDistanceReading);
 
             // Endless loop; end the program by pressing Ctrl-C.
-            while (od4.isRunning())
-            {
+            while (od4.isRunning()) {
                 // OpenCV data structure to hold an image.
                 cv::Mat outputImage;
 
@@ -297,6 +291,11 @@ int32_t main(int32_t argc, char **argv)
                 cv::Mat maskBlue;
                 cv::Mat maskYellow;
 
+                // Create a region of interest (ROI) to focus on the bottom part of the image
+                int roiHeight = outputImage.rows - 230;
+                cv::Rect roi(0, 230, outputImage.cols, roiHeight); // x, y, width, height
+                cv::Mat imageROI = outputImage(roi);
+
                 // Get pixels that are in range for blue cones
                 cv::inRange(blueImage, blueLow, blueHigh, maskBlue);
                 cv::inRange(yellowImage, yellowLow, yellowHigh, maskYellow);
@@ -318,36 +317,28 @@ int32_t main(int32_t argc, char **argv)
                 cv::findContours(processedYellow, contoursYellow, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
                 // Iterate through the blue contours
-                for (size_t i = 0; i < contoursBlue.size(); i++)
-                {
+                for(int i = 0; i < contoursBlue.size(); i++) {
                     // Create a rectangle out of the vectors
                     cv::Rect rect = cv::boundingRect(contoursBlue[i]);
-                    // Check if the rectangle is in the lower part of the frame and is not really small
-                    if (rect.area() > 100 && rect.y > 230)
-                    {
-                        // Draw the rectangle on the output image
+                    // Check if the rectangle is not really small
+                    if(rect.area() > 100) {
+                        // Draw the rectangle on the output image 
                         cv::rectangle(outputImage, rect.tl(), rect.br(), cv::Scalar(255, 0, 0), 2);
                     }
                 }
 
                 // Iterate through the yellow contours
-                for (size_t i = 0; i < contoursYellow.size(); i++)
-                {
+                for(int i = 0; i < contoursYellow.size(); i++) {
                     // Create a rectangle out of the vectors
                     cv::Rect rect = cv::boundingRect(contoursYellow[i]);
-                    // Check if the rectangle is in the lower part of the frame and is not really small
-                    if (rect.area() > 100 && rect.y > 230 && rect.y < 450 && (rect.x > 390 || rect.x < 340))
-                    {
-                        // Draw the rectangle on the output image
+                    // Check if the rectangle is not really small
+                    if(rect.area() > 100 && rect.y < 450 && (rect.x > 390 || rect.x < 340)){
+                        // Draw the rectangle on the output image 
                         cv::rectangle(outputImage, rect.tl(), rect.br(), cv::Scalar(0, 255, 255), 2);
-                        // print out the position of the rectangle
-                        std::cout << "Yellow Cone at: " << rect.x << ", " << rect.y << std::endl;
-                        std::cout << "Yellow Cone size: " << rect.area() << std::endl;
                     }
                 }
 
-                if (timeStamp.first)
-                {
+                if (timeStamp.first) {
                     currentTimeStamp = cluon::time::toMicroseconds(timeStamp.second);
                 }
 
@@ -398,10 +389,8 @@ int32_t main(int32_t argc, char **argv)
                 cv::putText(outputImage, overlayGround, cv::Point(10, 130), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
 
                 // Display image on your screen.
-                if (VERBOSE)
-                {
-                    cv::imshow(sharedMemory->name().c_str(), outputImage);
-                    cv::waitKey(1);
+                if (VERBOSE) {
+                    cv::imshow(sharedMemory->name().c_str(), imageROI);
 
                     if (BLUE)
                     {
@@ -414,6 +403,8 @@ int32_t main(int32_t argc, char **argv)
                         cv::imshow("Mask Yellow", maskYellow);
                         cv::imshow("Processed Yellow", processedYellow);
                     }
+
+                    cv::waitKey(1);
                 }
             }
         }
