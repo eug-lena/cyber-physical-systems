@@ -279,22 +279,22 @@ int32_t main(int32_t argc, char **argv) {
                 // TODO: Here, you can add some code to check the sampleTimePoint when the current frame was captured.
                 sharedMemory->unlock();
 
+                // Create a region of interest (ROI) to focus on the bottom part of the image
+                int roiHeight = outputImage.rows - 230;
+                cv::Rect roi(0, 230, outputImage.cols, roiHeight); // x, y, width, height
+                cv::Mat imageROI = outputImage(roi);
+
                 // Create HSV images
                 cv::Mat blueImage;
                 cv::Mat yellowImage;
 
                 // Convert the original image from the BGR space to the HSV space
-                cv::cvtColor(outputImage, blueImage, cv::COLOR_BGR2HSV);
-                cv::cvtColor(outputImage, yellowImage, cv::COLOR_BGR2HSV);
+                cv::cvtColor(imageROI, blueImage, cv::COLOR_BGR2HSV);
+                cv::cvtColor(imageROI, yellowImage, cv::COLOR_BGR2HSV);
 
                 // Create masked images
                 cv::Mat maskBlue;
                 cv::Mat maskYellow;
-
-                // Create a region of interest (ROI) to focus on the bottom part of the image
-                int roiHeight = outputImage.rows - 230;
-                cv::Rect roi(0, 230, outputImage.cols, roiHeight); // x, y, width, height
-                cv::Mat imageROI = outputImage(roi);
 
                 // Get pixels that are in range for blue cones
                 cv::inRange(blueImage, blueLow, blueHigh, maskBlue);
@@ -305,8 +305,8 @@ int32_t main(int32_t argc, char **argv) {
                 cv::Mat processedYellow;
 
                 // Denoise processed images
-                ImageDenoiser::denoiseImage(outputImage, maskBlue, processedBlue, blueThreshold, blueMaxValue);
-                ImageDenoiser::denoiseImage(outputImage, maskYellow, processedYellow, yellowThreshold, yellowMaxValue);
+                ImageDenoiser::denoiseImage(imageROI, maskBlue, processedBlue, blueThreshold, blueMaxValue);
+                ImageDenoiser::denoiseImage(imageROI, maskYellow, processedYellow, yellowThreshold, yellowMaxValue);
 
                 // Initialize an array of contours
                 std::vector<std::vector<cv::Point>> contoursBlue;
@@ -317,9 +317,13 @@ int32_t main(int32_t argc, char **argv) {
                 cv::findContours(processedYellow, contoursYellow, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
                 // Iterate through the blue contours
-                for(int i = 0; i < contoursBlue.size(); i++) {
+                for(size_t i = 0; i < contoursBlue.size(); i++) {
                     // Create a rectangle out of the vectors
                     cv::Rect rect = cv::boundingRect(contoursBlue[i]);
+
+                    // Adjust the rectangle to the ROI
+                    rect.y += 230;
+
                     // Check if the rectangle is not really small
                     if(rect.area() > 100) {
                         // Draw the rectangle on the output image 
@@ -328,9 +332,13 @@ int32_t main(int32_t argc, char **argv) {
                 }
 
                 // Iterate through the yellow contours
-                for(int i = 0; i < contoursYellow.size(); i++) {
+                for(size_t i = 0; i < contoursYellow.size(); i++) {
                     // Create a rectangle out of the vectors
                     cv::Rect rect = cv::boundingRect(contoursYellow[i]);
+
+                    // Adjust the rectangle to the ROI
+                    rect.y += 230;
+                    
                     // Check if the rectangle is not really small
                     if(rect.area() > 100 && rect.y < 450 && (rect.x > 390 || rect.x < 340)){
                         // Draw the rectangle on the output image 
@@ -390,7 +398,8 @@ int32_t main(int32_t argc, char **argv) {
 
                 // Display image on your screen.
                 if (VERBOSE) {
-                    cv::imshow(sharedMemory->name().c_str(), imageROI);
+                    cv::imshow(sharedMemory->name().c_str(), outputImage);
+                    cv::imshow("ROI", imageROI);
 
                     if (BLUE)
                     {
