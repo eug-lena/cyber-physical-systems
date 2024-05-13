@@ -15,6 +15,8 @@ def display_chart():
     plt.plot(df['groundSteering'], color='red', label='Original groundSteering')
     # Plot our algorithm's output
     plt.plot(df['output'], color='blue', label='Our output')
+    # Set the x-axis labels to sampleTimeStamp
+    plt.xticks(ticks=df['sampleTimeStamp'], rotation=90)
     # Set the plot title
     plt.title("groundSteering")
     # Display the legend
