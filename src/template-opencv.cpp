@@ -24,6 +24,10 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
+// Include fstream & iostream
+#include <iostream>
+#include <fstream>
+
 // Lower threshold for detecting blue cones
 cv::Scalar blueLow = cv::Scalar(105, 70, 46);
 // Higher threshold for detecting blue cones
@@ -161,8 +165,9 @@ int32_t main(int32_t argc, char **argv)
             float steadyStateError = 0;
             float rateOfChangeError = 0;
 
-            std::stringstream csv_stream;
-            csv_stream << "timestamp,originalGroundSteering,ourGroundSteering\n";
+            // Initialize fstream for storing frame by frame values
+            std::ofstream fout;
+            fout.open("/outputfile.csv");
 
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning())
@@ -348,11 +353,11 @@ int32_t main(int32_t argc, char **argv)
                     cv::waitKey(1);
                 }
 
-                // std::cout << "group_18;" << std::to_string(currentTimeStamp) << ";" << error << std::endl;
-                csv_stream << ground << "," << output << "\n";
+                std::cout << "group_18;" << std::to_string(currentTimeStamp) << ";" << output << std::endl;
+                fout << std::to_string(currentTimeStamp) << "," << ground << "," << output << std::endl;
             }
 
-            std::cout << csv_stream.str();
+            fout.close();
         }
         retCode = 0;
     }
