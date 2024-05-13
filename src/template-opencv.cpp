@@ -339,9 +339,6 @@ int32_t main(int32_t argc, char **argv) {
                 int roiHeight = outputImage.rows - 230;
                 cv::Rect roi(0, 230, outputImage.cols, roiHeight); // x, y, width, height
                 cv::Mat imageROI = outputImage(roi);
-
-                // Variable for the center bottom of the image
-                cv::Point imageCenter = cv::Point(WIDTH/2, HEIGHT);
                 
                 // Make a copy of the image
                 cv::Mat blueImage;
@@ -420,9 +417,6 @@ int32_t main(int32_t argc, char **argv) {
                     
                     // Check if the rectangle is not really small
                     if(rect.area() > 100 && rect.y < 450 && (rect.x > 390 || rect.x < 340)){
-                        // Draw the rectangle on the output image
-                        cv::Point center = (rect.tl() + rect.br()) / 2;
-                        cv::line(outputImage, center, imageCenter, cv::Scalar(0, 255, 0), 3);
                         // Draw the rectangle on the output image
                         cv::Point center = (rect.tl() + rect.br()) / 2;
                         cv::line(outputImage, center, imageCenter, cv::Scalar(0, 255, 0), 3);
