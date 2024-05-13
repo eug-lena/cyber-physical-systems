@@ -50,9 +50,9 @@ int yellowThreshold = 30;
 int yellowMaxValue = 255;
 
 // PID constants
-float kP = 0;
-float kI = 0;
-float kD = 0;
+double kP = 0;
+double kI = 0;
+double kD = 0;
 
 // Callback function to avoid the warnings
 static void onBlueTrackbar(int value, void *userdata) {
@@ -297,10 +297,10 @@ int32_t main(int32_t argc, char **argv) {
 
             od4.dataTrigger(opendlv::proxy::DistanceReading::ID(), onDistanceReading);
 
-            float error;
-            float previousError = 0;
-            float steadyStateError = 0;
-            float rateOfChangeError = 0;
+            double error;
+            double previousError = 0;
+            double steadyStateError = 0;
+            double rateOfChangeError = 0;
 
             // Initialize fstream for storing frame by frame values
             std::ofstream fout;
@@ -373,8 +373,8 @@ int32_t main(int32_t argc, char **argv) {
                 cv::findContours(processedYellow, contoursYellow, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
                 
                 // Declare variables to keep track of the average distance to the left part and right part of the track
-                float averageDistanceLeft = 0;
-                float averageDistanceRight = 0;
+                double averageDistanceLeft = 0;
+                double averageDistanceRight = 0;
 
                 // Iterate through the blue contours
                 for(size_t i = 0; i < contoursBlue.size(); i++){
@@ -404,9 +404,6 @@ int32_t main(int32_t argc, char **argv) {
                     averageDistanceLeft = 0;
                 }
 
-                // Divide by the number of blue cones to get the average distance
-                averageDistanceLeft /= contoursBlue.size();
-
                 // Iterate through the yellow contours
                 for(size_t i = 0; i < contoursYellow.size(); i++){
                     // Create a rectangle out of the vectors
@@ -421,9 +418,6 @@ int32_t main(int32_t argc, char **argv) {
                         cv::Point center = (rect.tl() + rect.br()) / 2;
                         cv::line(outputImage, center, imageCenter, cv::Scalar(0, 255, 0), 3);
                         cv::rectangle(outputImage, rect.tl(), rect.br(), cv::Scalar(0, 255, 255), 2);
-
-                        // Add the distance from the car to the center of a cone
-                        averageDistanceRight += cv::norm(imageCenter - center);
 
                         // Add the distance from the car to the center of a cone
                         averageDistanceRight += cv::norm(imageCenter - center);
@@ -445,14 +439,14 @@ int32_t main(int32_t argc, char **argv) {
                 rateOfChangeError = error - previousError;
 
                 // PID Controller
-                float Proportional = error * kP;
-                float Integral = steadyStateError * kI;
-                float Derivative = rateOfChangeError * kD;
+                double Proportional = error * kP;
+                double Integral = steadyStateError * kI;
+                double Derivative = rateOfChangeError * kD;
 
                 // The output goes into the ground steering request
-                float output = Proportional + Integral + Derivative;
-                if (output > 0.3) output = 0.3;
-                else if (output < -0.3) output = -0.3;
+                double output = Proportional + Integral + Derivative;
+                // if (output > 0.3) output = 0.3;
+                // else if (output < -0.3) output = -0.3;
 
                 previousError = error;
 
