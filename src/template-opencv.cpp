@@ -24,6 +24,10 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
+// Include fstream & iostream
+#include <iostream>
+#include <fstream>
+
 #include "ImageDenoiser.hpp"
 
 // Lower threshold for detecting blue cones
@@ -254,6 +258,15 @@ int32_t main(int32_t argc, char **argv) {
 
             od4.dataTrigger(opendlv::proxy::DistanceReading::ID(), onDistanceReading);
 
+            float error;
+            float previousError = 0;
+            float steadyStateError = 0;
+            float rateOfChangeError = 0;
+
+            // Initialize fstream for storing frame by frame values
+            std::ofstream fout;
+            fout.open("/tmp/output.csv");
+
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
                 // OpenCV data structure to hold an image.
@@ -279,6 +292,9 @@ int32_t main(int32_t argc, char **argv) {
                 // TODO: Here, you can add some code to check the sampleTimePoint when the current frame was captured.
                 sharedMemory->unlock();
 
+                // Variable for the center bottom of the image
+                cv::Point imageCenter = cv::Point(WIDTH/2, HEIGHT);
+                
                 // Create a region of interest (ROI) to focus on the bottom part of the image
                 int roiHeight = outputImage.rows - 230;
                 cv::Rect roi(0, 230, outputImage.cols, roiHeight); // x, y, width, height
@@ -315,9 +331,13 @@ int32_t main(int32_t argc, char **argv) {
                 // Find contours from the mask
                 cv::findContours(processedBlue, contoursBlue, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
                 cv::findContours(processedYellow, contoursYellow, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+                
+                // Declare variables to keep track of the average distance to the left part and right part of the track
+                float averageDistanceLeft = 0;
+                float averageDistanceRight = 0;
 
                 // Iterate through the blue contours
-                for(size_t i = 0; i < contoursBlue.size(); i++) {
+                for(size_t i = 0; i < contoursBlue.size(); i++){
                     // Create a rectangle out of the vectors
                     cv::Rect rect = cv::boundingRect(contoursBlue[i]);
 
@@ -327,12 +347,21 @@ int32_t main(int32_t argc, char **argv) {
                     // Check if the rectangle is not really small
                     if(rect.area() > 100) {
                         // Draw the rectangle on the output image 
+                        // Start point
+                        cv::Point center = (rect.tl() + rect.br()) / 2;
+                        cv::line(outputImage, center, imageCenter, cv::Scalar(0, 255, 0), 3);
                         cv::rectangle(outputImage, rect.tl(), rect.br(), cv::Scalar(255, 0, 0), 2);
+
+                        // Add the distance from the car to the center of a cone
+                        averageDistanceLeft += cv::norm(imageCenter - center);
                     }
                 }
 
+                // Divide by the number of blue cones to get the average distance
+                averageDistanceLeft /= contoursBlue.size();
+
                 // Iterate through the yellow contours
-                for(size_t i = 0; i < contoursYellow.size(); i++) {
+                for(size_t i = 0; i < contoursYellow.size(); i++){
                     // Create a rectangle out of the vectors
                     cv::Rect rect = cv::boundingRect(contoursYellow[i]);
 
@@ -341,10 +370,41 @@ int32_t main(int32_t argc, char **argv) {
                     
                     // Check if the rectangle is not really small
                     if(rect.area() > 100 && rect.y < 450 && (rect.x > 390 || rect.x < 340)){
-                        // Draw the rectangle on the output image 
+                        // Draw the rectangle on the output image
+                        cv::Point center = (rect.tl() + rect.br()) / 2;
+                        cv::line(outputImage, center, imageCenter, cv::Scalar(0, 255, 0), 3);
                         cv::rectangle(outputImage, rect.tl(), rect.br(), cv::Scalar(0, 255, 255), 2);
+
+                        // Add the distance from the car to the center of a cone
+                        averageDistanceRight += cv::norm(imageCenter - center);
                     }
                 }
+
+                // Divide by the number of yellow cones to get the average distance
+                averageDistanceRight /= contoursYellow.size();
+
+                // Calculate the error based on the average distances
+                // TODO: Check for calibration before this step
+                error = averageDistanceLeft - averageDistanceRight; // Error in pixels
+                
+                steadyStateError += error;
+                rateOfChangeError = error - previousError;
+
+                // PID Controller
+                float kP = 0.04;
+                float kI = 0;
+                float kD = 0;
+                
+                float Proportional = error * kP;
+                float Integral = steadyStateError * kI;
+                float Derivative = rateOfChangeError * kD;
+
+                // The output goes into the ground steering request
+                float output = Proportional + Integral + Derivative;
+                if (output > 0.3) output = 0.3;
+                else if (output < -0.3) output = -0.3;
+
+                previousError = error;
 
                 if (timeStamp.first) {
                     currentTimeStamp = cluon::time::toMicroseconds(timeStamp.second);
@@ -415,7 +475,12 @@ int32_t main(int32_t argc, char **argv) {
 
                     cv::waitKey(1);
                 }
+
+                std::cout << "group_18;" << std::to_string(currentTimeStamp) << ";" << output << std::endl;
+                fout << std::to_string(currentTimeStamp) << "," << ground << "," << output << std::endl;
             }
+
+            fout.close();
         }
         retCode = 0;
     }
