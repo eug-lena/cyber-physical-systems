@@ -45,6 +45,11 @@ int yellowThreshold = 30;
 // Yellow max value
 int yellowMaxValue = 255;
 
+// PID constants
+float kP = 0;
+float kI = 0;
+float kD = 0;
+
 // Callback function to avoid the warnings
 static void onBlueTrackbar(int value, void *userdata) {
     int trackbarIndex = reinterpret_cast<intptr_t>(userdata);
@@ -130,6 +135,27 @@ static void onYellowTrackbar(int value, void *userdata)
     }
 }
 
+static void onPIDTrackbar(int value, void *userdata) {
+    int trackbarIndex = reinterpret_cast<intptr_t>(userdata);
+
+    switch (trackbarIndex) {
+    case 0:
+        // Proportional
+        kP = value / 1000.0;
+        break;
+    case 1:
+        // Integral
+        kI = value / 1000.0;
+        break;
+    case 2:
+        // Derivative
+        kD = value / 1000.0;
+        break;
+    default:
+        break;
+    }
+}
+
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
 
@@ -156,6 +182,7 @@ int32_t main(int32_t argc, char **argv) {
         const bool VERBOSE{commandlineArguments.count("verbose") != 0};
         const bool BLUE{commandlineArguments.count("blue") != 0};
         const bool YELLOW{commandlineArguments.count("yellow") != 0};
+        const bool PID{commandlineArguments.count("pid") != 0};
 
         // If the blue command argument is passed, we debug the blue detection
         if (BLUE) {
@@ -217,6 +244,19 @@ int32_t main(int32_t argc, char **argv) {
 
             cv::createTrackbar("Max Value", "Processed Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(7));
             cv::setTrackbarPos("Max Value", "Processed Yellow", yellowMaxValue);
+        }
+
+        if (PID) {
+            cv::namedWindow("PID", cv::WINDOW_NORMAL);
+
+            cv::createTrackbar("Proportional", "PID", NULL, 1000, onPIDTrackbar, reinterpret_cast<void *>(0));
+            cv::setTrackbarPos("Proportional", "PID", 0);
+
+            cv::createTrackbar("Integral", "PID", NULL, 1000, onPIDTrackbar, reinterpret_cast<void *>(1));
+            cv::setTrackbarPos("Integral", "PID", 0);
+
+            cv::createTrackbar("Derivative", "PID", NULL, 1000, onPIDTrackbar, reinterpret_cast<void *>(2));
+            cv::setTrackbarPos("Derivative", "PID", 0);
         }
 
         // Attach to the shared memory.
@@ -351,7 +391,11 @@ int32_t main(int32_t argc, char **argv) {
                 }
 
                 // Divide by the number of blue cones to get the average distance
-                averageDistanceLeft /= contoursBlue.size();
+                if (contoursBlue.size() != 0) {
+                    averageDistanceLeft /= contoursBlue.size();
+                } else {
+                    averageDistanceLeft = 0;
+                }
 
                 // Iterate through the yellow contours
                 for(size_t i = 0; i < contoursYellow.size(); i++) {
@@ -374,7 +418,11 @@ int32_t main(int32_t argc, char **argv) {
                 }
 
                 // Divide by the number of yellow cones to get the average distance
-                averageDistanceRight /= contoursYellow.size();
+                if (contoursYellow.size() != 0) {
+                    averageDistanceRight /= contoursYellow.size();
+                } else {
+                    averageDistanceRight = 0;
+                }
 
                 // Calculate the error based on the average distances
                 // TODO: Check for calibration before this step
@@ -384,18 +432,14 @@ int32_t main(int32_t argc, char **argv) {
                 rateOfChangeError = error - previousError;
 
                 // PID Controller
-                float kP = 0.04;
-                float kI = 0;
-                float kD = 0;
-                
                 float Proportional = error * kP;
                 float Integral = steadyStateError * kI;
                 float Derivative = rateOfChangeError * kD;
 
                 // The output goes into the ground steering request
                 float output = Proportional + Integral + Derivative;
-                if (output > 0.3) output = 0.3;
-                else if (output < -0.3) output = -0.3;
+                // if (output > 0.3) output = 0.3;
+                // else if (output < -0.3) output = -0.3;
 
                 previousError = error;
 
@@ -470,6 +514,9 @@ int32_t main(int32_t argc, char **argv) {
                 }
 
                 // std::cout << "group_18;" << std::to_string(currentTimeStamp) << ";" << error << std::endl;
+                // print the output
+                std::cout << "output: " << std::to_string(output) << std::endl;
+                // std::cout << "error: " << std::to_string(error) << std::endl;
                 csv_stream << ground << "," << output << "\n";
             }
 
