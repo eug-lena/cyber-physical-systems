@@ -28,22 +28,32 @@
 #include <iostream>
 #include <fstream>
 
+#include "ImageDenoiser.hpp"
+
 // Lower threshold for detecting blue cones
-cv::Scalar blueLow = cv::Scalar(105, 70, 46);
+cv::Scalar blueLow = cv::Scalar(107, 111, 45);
 // Higher threshold for detecting blue cones
-cv::Scalar blueHigh = cv::Scalar(149, 255, 144);
+cv::Scalar blueHigh = cv::Scalar(140, 155, 86);
 // Lower threshold for detecting yellow cones
 cv::Scalar yellowLow = cv::Scalar(11, 20, 128);
 // Higher threshold for detecting yellow cones
 cv::Scalar yellowHigh = cv::Scalar(54, 198, 232);
 
+// Blue threshold
+int blueThreshold = 30;
+// Blue max value
+int blueMaxValue = 255;
+
+// Yellow threshold
+int yellowThreshold = 30;
+// Yellow max value
+int yellowMaxValue = 255;
+
 // Callback function to avoid the warnings
-static void onBlueTrackbar(int value, void *userdata)
-{
+static void onBlueTrackbar(int value, void *userdata) {
     int trackbarIndex = reinterpret_cast<intptr_t>(userdata);
 
-    switch (trackbarIndex)
-    {
+    switch (trackbarIndex) {
     case 0:
         // Hue Low
         blueLow[0] = value;
@@ -68,14 +78,63 @@ static void onBlueTrackbar(int value, void *userdata)
         // Value High
         blueHigh[2] = value;
         break;
-
+    case 6:
+        // Threshold
+        blueThreshold = value;
+        break;
+    case 7:
+        // Max value
+        blueMaxValue = value;
+        break;
     default:
         break;
     }
 }
 
-int32_t main(int32_t argc, char **argv)
+static void onYellowTrackbar(int value, void *userdata)
 {
+    int trackbarIndex = reinterpret_cast<intptr_t>(userdata);
+
+    switch (trackbarIndex)
+    {
+    case 0:
+        // Hue Low
+        yellowLow[0] = value;
+        break;
+    case 1:
+        // Hue High
+        yellowHigh[0] = value;
+        break;
+    case 2:
+        // Saturation Low
+        yellowLow[1] = value;
+        break;
+    case 3:
+        // Saturation High
+        yellowHigh[1] = value;
+        break;
+    case 4:
+        // Value Low
+        yellowLow[2] = value;
+        break;
+    case 5:
+        // Value High
+        yellowHigh[2] = value;
+        break;
+    case 6:
+        // Threshold
+        yellowThreshold = value;
+        break;
+    case 7:
+        // Max value
+        yellowMaxValue = value;
+        break;
+    default:
+        break;
+    }
+}
+
+int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
 
     // Parse the command line parameters as we require the user to specify some mandatory information on startup.
@@ -83,8 +142,8 @@ int32_t main(int32_t argc, char **argv)
     if ((0 == commandlineArguments.count("cid")) ||
         (0 == commandlineArguments.count("name")) ||
         (0 == commandlineArguments.count("width")) ||
-        (0 == commandlineArguments.count("height")))
-    {
+        (0 == commandlineArguments.count("height"))) {
+
         std::cerr << argv[0] << " attaches to a shared memory area containing an ARGB image." << std::endl;
         std::cerr << "Usage:   " << argv[0] << " --cid=<OD4 session> --name=<name of shared memory area> [--verbose]" << std::endl;
         std::cerr << "         --cid:    CID of the OD4Session to send and receive messages" << std::endl;
@@ -93,43 +152,82 @@ int32_t main(int32_t argc, char **argv)
         std::cerr << "         --height: height of the frame" << std::endl;
         std::cerr << "Example: " << argv[0] << " --cid=253 --name=img --width=640 --height=480 --verbose" << std::endl;
     }
-    else
-    {
+    else {
         // Extract the values from the command line parameters
         const std::string NAME{commandlineArguments["name"]};
         const uint32_t WIDTH{static_cast<uint32_t>(std::stoi(commandlineArguments["width"]))};
         const uint32_t HEIGHT{static_cast<uint32_t>(std::stoi(commandlineArguments["height"]))};
         const bool VERBOSE{commandlineArguments.count("verbose") != 0};
         const bool BLUE{commandlineArguments.count("blue") != 0};
+        const bool YELLOW{commandlineArguments.count("yellow") != 0};
 
         // If the blue command argument is passed, we debug the blue detection
         if (BLUE)
         {
-            cv::namedWindow("HSV Blue", cv::WINDOW_NORMAL);
+            cv::namedWindow("Mask Blue", cv::WINDOW_NORMAL);
 
-            cv::createTrackbar("Hue - low", "HSV Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(0));
-            cv::setTrackbarPos("Hue - low", "HSV Blue", static_cast<int>(blueLow[0]));
+            cv::createTrackbar("Hue - low", "Mask Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(0));
+            cv::setTrackbarPos("Hue - low", "Mask Blue", static_cast<int>(blueLow[0]));
 
-            cv::createTrackbar("Hue - high", "HSV Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(1));
-            cv::setTrackbarPos("Hue - high", "HSV Blue", static_cast<int>(blueHigh[0]));
+            cv::createTrackbar("Hue - high", "Mask Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(1));
+            cv::setTrackbarPos("Hue - high", "Mask Blue", static_cast<int>(blueHigh[0]));
 
-            cv::createTrackbar("Sat - low", "HSV Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(2));
-            cv::setTrackbarPos("Sat - low", "HSV Blue", static_cast<int>(blueLow[1]));
+            cv::createTrackbar("Sat - low", "Mask Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(2));
+            cv::setTrackbarPos("Sat - low", "Mask Blue", static_cast<int>(blueLow[1]));
 
-            cv::createTrackbar("Sat - high", "HSV Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(3));
-            cv::setTrackbarPos("Sat - high", "HSV Blue", static_cast<int>(blueHigh[1]));
+            cv::createTrackbar("Sat - high", "Mask Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(3));
+            cv::setTrackbarPos("Sat - high", "Mask Blue", static_cast<int>(blueHigh[1]));
 
-            cv::createTrackbar("Val - low", "HSV Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(4));
-            cv::setTrackbarPos("Val - low", "HSV Blue", static_cast<int>(blueLow[2]));
+            cv::createTrackbar("Val - low", "Mask Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(4));
+            cv::setTrackbarPos("Val - low", "Mask Blue", static_cast<int>(blueLow[2]));
 
-            cv::createTrackbar("Val - high", "HSV Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(5));
-            cv::setTrackbarPos("Val - high", "HSV Blue", static_cast<int>(blueHigh[2]));
+            cv::createTrackbar("Val - high", "Mask Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(5));
+            cv::setTrackbarPos("Val - high", "Mask Blue", static_cast<int>(blueHigh[2]));
+
+            cv::namedWindow("Processed Blue", cv::WINDOW_NORMAL);
+
+            cv::createTrackbar("Threshold", "Processed Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(6));
+            cv::setTrackbarPos("Threshold", "Processed Blue", blueThreshold);
+
+            cv::createTrackbar("Max Value", "Processed Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(7));
+            cv::setTrackbarPos("Max Value", "Processed Blue", blueMaxValue);
+        }
+
+        // If the yellow command argument is passed, we debug the yellow detection
+        if (YELLOW)
+        {
+            cv::namedWindow("Mask Yellow", cv::WINDOW_NORMAL);
+
+            cv::createTrackbar("Hue - low", "Mask Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(0));
+            cv::setTrackbarPos("Hue - low", "Mask Yellow", static_cast<int>(yellowLow[0]));
+
+            cv::createTrackbar("Hue - high", "Mask Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(1));
+            cv::setTrackbarPos("Hue - high", "Mask Yellow", static_cast<int>(yellowHigh[0]));
+
+            cv::createTrackbar("Sat - low", "Mask Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(2));
+            cv::setTrackbarPos("Sat - low", "Mask Yellow", static_cast<int>(yellowLow[1]));
+
+            cv::createTrackbar("Sat - high", "Mask Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(3));
+            cv::setTrackbarPos("Sat - high", "Mask Yellow", static_cast<int>(yellowHigh[1]));
+
+            cv::createTrackbar("Val - low", "Mask Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(4));
+            cv::setTrackbarPos("Val - low", "Mask Yellow", static_cast<int>(yellowLow[2]));
+
+            cv::createTrackbar("Val - high", "Mask Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(5));
+            cv::setTrackbarPos("Val - high", "Mask Yellow", static_cast<int>(yellowHigh[2]));
+
+            cv::namedWindow("Processed Yellow", cv::WINDOW_NORMAL);
+
+            cv::createTrackbar("Threshold", "Processed Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(6));
+            cv::setTrackbarPos("Threshold", "Processed Yellow", yellowThreshold);
+
+            cv::createTrackbar("Max Value", "Processed Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(7));
+            cv::setTrackbarPos("Max Value", "Processed Yellow", yellowMaxValue);
         }
 
         // Attach to the shared memory.
         std::unique_ptr<cluon::SharedMemory> sharedMemory{new cluon::SharedMemory{NAME}};
-        if (sharedMemory && sharedMemory->valid())
-        {
+        if (sharedMemory && sharedMemory->valid()) {
             std::clog << argv[0] << ": Attached to shared memory '" << sharedMemory->name() << " (" << sharedMemory->size() << " bytes)." << std::endl;
 
             // Interface to a running OpenDaVINCI session where network messages are exchanged.
@@ -170,8 +268,7 @@ int32_t main(int32_t argc, char **argv)
             fout.open("/tmp/output.csv");
 
             // Endless loop; end the program by pressing Ctrl-C.
-            while (od4.isRunning())
-            {
+            while (od4.isRunning()) {
                 // OpenCV data structure to hold an image.
                 cv::Mat outputImage;
 
@@ -198,17 +295,20 @@ int32_t main(int32_t argc, char **argv)
                 // Variable for the center bottom of the image
                 cv::Point imageCenter = cv::Point(WIDTH/2, HEIGHT);
                 
-                // Make a copy of the image
+                // Create a region of interest (ROI) to focus on the bottom part of the image
+                int roiHeight = outputImage.rows - 230;
+                cv::Rect roi(0, 230, outputImage.cols, roiHeight); // x, y, width, height
+                cv::Mat imageROI = outputImage(roi);
+
+                // Create HSV images
                 cv::Mat blueImage;
-                outputImage.copyTo(blueImage);
                 cv::Mat yellowImage;
-                outputImage.copyTo(yellowImage);
 
-                // Change the original image into HSV
-                cv::cvtColor(outputImage, blueImage, cv::COLOR_BGR2HSV);
-                cv::cvtColor(outputImage, yellowImage, cv::COLOR_BGR2HSV);
+                // Convert the original image from the BGR space to the HSV space
+                cv::cvtColor(imageROI, blueImage, cv::COLOR_BGR2HSV);
+                cv::cvtColor(imageROI, yellowImage, cv::COLOR_BGR2HSV);
 
-                // Create a mask image
+                // Create masked images
                 cv::Mat maskBlue;
                 cv::Mat maskYellow;
 
@@ -216,13 +316,21 @@ int32_t main(int32_t argc, char **argv)
                 cv::inRange(blueImage, blueLow, blueHigh, maskBlue);
                 cv::inRange(yellowImage, yellowLow, yellowHigh, maskYellow);
 
+                // Create processed images
+                cv::Mat processedBlue;
+                cv::Mat processedYellow;
+
+                // Denoise processed images
+                ImageDenoiser::denoiseImage(imageROI, maskBlue, processedBlue, blueThreshold, blueMaxValue);
+                ImageDenoiser::denoiseImage(imageROI, maskYellow, processedYellow, yellowThreshold, yellowMaxValue);
+
                 // Initialize an array of contours
-                std::vector <std::vector <cv::Point>> contoursBlue;
-                std::vector <std::vector <cv::Point>> contoursYellow;
+                std::vector<std::vector<cv::Point>> contoursBlue;
+                std::vector<std::vector<cv::Point>> contoursYellow;
 
                 // Find contours from the mask
-                cv::findContours(maskBlue, contoursBlue, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-                cv::findContours(maskYellow, contoursYellow, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+                cv::findContours(processedBlue, contoursBlue, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+                cv::findContours(processedYellow, contoursYellow, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
                 
                 // Declare variables to keep track of the average distance to the left part and right part of the track
                 float averageDistanceLeft = 0;
@@ -232,8 +340,12 @@ int32_t main(int32_t argc, char **argv)
                 for(size_t i = 0; i < contoursBlue.size(); i++){
                     // Create a rectangle out of the vectors
                     cv::Rect rect = cv::boundingRect(contoursBlue[i]);
-                    // Check if the rectangle is in the lower part of the frame and is not really small
-                    if(rect.area() > 100 && rect.y > 230){
+
+                    // Adjust the rectangle to the ROI
+                    rect.y += 230;
+
+                    // Check if the rectangle is not really small
+                    if(rect.area() > 100) {
                         // Draw the rectangle on the output image 
                         // Start point
                         cv::Point center = (rect.tl() + rect.br()) / 2;
@@ -252,8 +364,12 @@ int32_t main(int32_t argc, char **argv)
                 for(size_t i = 0; i < contoursYellow.size(); i++){
                     // Create a rectangle out of the vectors
                     cv::Rect rect = cv::boundingRect(contoursYellow[i]);
-                    // Check if the rectangle is in the lower part of the frame and is not really small
-                    if(rect.area() > 100 && rect.x > 150 && rect.y > 230 && rect.y < 450 && (rect.x > 390 || rect.x < 340)){
+
+                    // Adjust the rectangle to the ROI
+                    rect.y += 230;
+                    
+                    // Check if the rectangle is not really small
+                    if(rect.area() > 100 && rect.y < 450 && (rect.x > 390 || rect.x < 340)){
                         // Draw the rectangle on the output image
                         cv::Point center = (rect.tl() + rect.br()) / 2;
                         cv::line(outputImage, center, imageCenter, cv::Scalar(0, 255, 0), 3);
@@ -341,13 +457,20 @@ int32_t main(int32_t argc, char **argv)
                 cv::putText(outputImage, overlayGround, cv::Point(10, 130), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
 
                 // Display image on your screen.
-                if (VERBOSE)
-                {
+                if (VERBOSE) {
                     cv::imshow(sharedMemory->name().c_str(), outputImage);
+                    cv::imshow("ROI", imageROI);
 
                     if (BLUE)
                     {
-                        cv::imshow("HSV Blue", maskBlue);
+                        cv::imshow("Mask Blue", maskBlue);
+                        cv::imshow("Processed Blue", processedBlue);
+                    }
+
+                    if (YELLOW)
+                    {
+                        cv::imshow("Mask Yellow", maskYellow);
+                        cv::imshow("Processed Yellow", processedYellow);
                     }
 
                     cv::waitKey(1);
