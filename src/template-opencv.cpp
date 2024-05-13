@@ -167,7 +167,7 @@ int32_t main(int32_t argc, char **argv)
 
             // Initialize fstream for storing frame by frame values
             std::ofstream fout;
-            fout.open("/outputfile.csv");
+            fout.open("/tmp/output.csv");
 
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning())
