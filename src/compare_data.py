@@ -16,7 +16,7 @@ def display_chart():
     # Plot our algorithm's output
     plt.plot(df['output'], color='blue', label='Our output')
     # Set the x-axis labels to sampleTimeStamp
-    plt.xticks(ticks=df['sampleTimeStamp'], rotation=90)
+    # plt.xticks(ticks=df['sampleTimeStamp'], rotation=90)
     # Set the plot title
     plt.title("groundSteering")
     # Display the legend
@@ -65,7 +65,7 @@ def main():
 if __name__ == '__main__':
     try:
         # Read the .csv file or handle the exception if it deosn't exist
-        df = pd.read_csv("src/output.csv", sep=',')
+        df = pd.read_csv("output.csv", sep=',')
         main()
     except FileNotFoundError:
         print("File not found.")
