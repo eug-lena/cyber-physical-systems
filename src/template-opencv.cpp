@@ -145,15 +145,15 @@ static void onPIDTrackbar(int value, void *userdata) {
     switch (trackbarIndex) {
     case 0:
         // Proportional
-        kP = value / 1000.0;
+        kP = value / 10000.0;
         break;
     case 1:
         // Integral
-        kI = value / 1000.0;
+        kI = value / 10000.0;
         break;
     case 2:
         // Derivative
-        kD = value / 1000.0;
+        kD = value / 10000.0;
         break;
     default:
         break;
@@ -305,6 +305,7 @@ int32_t main(int32_t argc, char **argv) {
             // Initialize fstream for storing frame by frame values
             std::ofstream fout;
             fout.open("/tmp/output.csv");
+            fout << "sampleTimeStamp,groundSteering,output" << std::endl;
 
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning())
@@ -445,8 +446,8 @@ int32_t main(int32_t argc, char **argv) {
 
                 // The output goes into the ground steering request
                 double output = Proportional + Integral + Derivative;
-                // if (output > 0.3) output = 0.3;
-                // else if (output < -0.3) output = -0.3;
+                if (output > 0.22107488) output = 0.22107488;
+                else if (output < -0.22107488) output = -0.22107488;
 
                 previousError = error;
 
