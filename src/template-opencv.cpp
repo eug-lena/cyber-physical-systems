@@ -31,9 +31,9 @@
 #include "ImageDenoiser.hpp"
 
 // Lower threshold for detecting blue cones
-cv::Scalar blueLow = cv::Scalar(107, 111, 45);
+cv::Scalar blueLow = cv::Scalar(109, 68, 42);
 // Higher threshold for detecting blue cones
-cv::Scalar blueHigh = cv::Scalar(140, 155, 86);
+cv::Scalar blueHigh = cv::Scalar(135, 250, 120);
 // Lower threshold for detecting yellow cones
 cv::Scalar yellowLow = cv::Scalar(11, 20, 128);
 // Higher threshold for detecting yellow cones
@@ -50,7 +50,7 @@ int yellowThreshold = 30;
 int yellowMaxValue = 255;
 
 // PID constants
-double kP = 0;
+double kP = 0.0070;
 double kI = 0;
 double kD = 0;
 
@@ -145,15 +145,15 @@ static void onPIDTrackbar(int value, void *userdata) {
     switch (trackbarIndex) {
     case 0:
         // Proportional
-        kP = value / 1000.0;
+        kP = value / 10000.0;
         break;
     case 1:
         // Integral
-        kI = value / 1000.0;
+        kI = value / 10000.0;
         break;
     case 2:
         // Derivative
-        kD = value / 1000.0;
+        kD = value / 10000.0;
         break;
     default:
         break;
@@ -253,13 +253,13 @@ int32_t main(int32_t argc, char **argv) {
         if (PID) {
             cv::namedWindow("PID", cv::WINDOW_NORMAL);
 
-            cv::createTrackbar("Proportional", "PID", NULL, 1000, onPIDTrackbar, reinterpret_cast<void *>(0));
+            cv::createTrackbar("Proportional", "PID", NULL, 10000, onPIDTrackbar, reinterpret_cast<void *>(0));
             cv::setTrackbarPos("Proportional", "PID", 0);
 
-            cv::createTrackbar("Integral", "PID", NULL, 1000, onPIDTrackbar, reinterpret_cast<void *>(1));
+            cv::createTrackbar("Integral", "PID", NULL, 10000, onPIDTrackbar, reinterpret_cast<void *>(1));
             cv::setTrackbarPos("Integral", "PID", 0);
 
-            cv::createTrackbar("Derivative", "PID", NULL, 1000, onPIDTrackbar, reinterpret_cast<void *>(2));
+            cv::createTrackbar("Derivative", "PID", NULL, 10000, onPIDTrackbar, reinterpret_cast<void *>(2));
             cv::setTrackbarPos("Derivative", "PID", 0);
         }
 
@@ -305,6 +305,7 @@ int32_t main(int32_t argc, char **argv) {
             // Initialize fstream for storing frame by frame values
             std::ofstream fout;
             fout.open("/tmp/output.csv");
+            fout << "sampleTimeStamp,groundSteering,output" << std::endl;
 
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning())
@@ -445,9 +446,13 @@ int32_t main(int32_t argc, char **argv) {
 
                 // The output goes into the ground steering request
                 double output = Proportional + Integral + Derivative;
-                // if (output > 0.3) output = 0.3;
-                // else if (output < -0.3) output = -0.3;
+                if (averageDistanceLeft == 0) output = -1;
+                else if (averageDistanceRight == 0) output = 1;
 
+                if (output > 0.22107488) output = 0.22107488;
+                else if (output < -0.22107488) output = -0.22107488;
+
+                // Update the previous error
                 previousError = error;
 
                 if (timeStamp.first) {
@@ -521,6 +526,7 @@ int32_t main(int32_t argc, char **argv) {
                 }
 
                 std::cout << "group_18;" << std::to_string(currentTimeStamp) << ";" << output << std::endl;
+                // std::cout << output << ", original: " << ground << std::endl;
                 fout << std::to_string(currentTimeStamp) << "," << ground << "," << output << std::endl;
             }
 
