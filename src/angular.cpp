@@ -27,20 +27,14 @@
 // Include fstream & iostream
 #include <iostream>
 #include <fstream>
+#include <queue>
 
 #include "ImageDenoiser.hpp"
-
-// Lower threshold for detecting blue cones
-cv::Scalar blueLow = cv::Scalar(107, 111, 45);
-// Higher threshold for detecting blue cones
-cv::Scalar blueHigh = cv::Scalar(140, 155, 86);
 
 // Lower threshold for detecting blue cones
 cv::Scalar blueLow = cv::Scalar(109, 68, 42);
 // Higher threshold for detecting blue cones
 cv::Scalar blueHigh = cv::Scalar(135, 250, 120);
-
-
 // Lower threshold for detecting yellow cones
 cv::Scalar yellowLow = cv::Scalar(11, 20, 128);
 // Higher threshold for detecting yellow cones
@@ -56,10 +50,11 @@ int yellowThreshold = 30;
 // Yellow max value
 int yellowMaxValue = 255;
 
-// PID constants
-double kP = 0;
-double kI = 0;
-double kD = 0;
+// Queue for storing the first timestamps
+std::queue<double> steeringQueue;
+std::queue<std::time_t> timestampQueue;
+
+int queueCounter = 0; // To count the first elements
 
 // Callback function to avoid the warnings
 static void onBlueTrackbar(int value, void *userdata) {
@@ -146,27 +141,6 @@ static void onYellowTrackbar(int value, void *userdata)
     }
 }
 
-static void onPIDTrackbar(int value, void *userdata) {
-    int trackbarIndex = reinterpret_cast<intptr_t>(userdata);
-
-    switch (trackbarIndex) {
-    case 0:
-        // Proportional
-        kP = value / 10000.0;
-        break;
-    case 1:
-        // Integral
-        kI = value / 10000.0;
-        break;
-    case 2:
-        // Derivative
-        kD = value / 10000.0;
-        break;
-    default:
-        break;
-    }
-}
-
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
 
@@ -193,7 +167,6 @@ int32_t main(int32_t argc, char **argv) {
         const bool VERBOSE{commandlineArguments.count("verbose") != 0};
         const bool BLUE{commandlineArguments.count("blue") != 0};
         const bool YELLOW{commandlineArguments.count("yellow") != 0};
-        const bool PID{commandlineArguments.count("pid") != 0};
 
         // If the blue command argument is passed, we debug the blue detection
         if (BLUE) {
@@ -257,19 +230,6 @@ int32_t main(int32_t argc, char **argv) {
             cv::setTrackbarPos("Max Value", "Processed Yellow", yellowMaxValue);
         }
 
-        if (PID) {
-            cv::namedWindow("PID", cv::WINDOW_NORMAL);
-
-            cv::createTrackbar("Proportional", "PID", NULL, 1000, onPIDTrackbar, reinterpret_cast<void *>(0));
-            cv::setTrackbarPos("Proportional", "PID", 0);
-
-            cv::createTrackbar("Integral", "PID", NULL, 1000, onPIDTrackbar, reinterpret_cast<void *>(1));
-            cv::setTrackbarPos("Integral", "PID", 0);
-
-            cv::createTrackbar("Derivative", "PID", NULL, 1000, onPIDTrackbar, reinterpret_cast<void *>(2));
-            cv::setTrackbarPos("Derivative", "PID", 0);
-        }
-
         // Attach to the shared memory.
         std::unique_ptr<cluon::SharedMemory> sharedMemory{new cluon::SharedMemory{NAME}};
         if (sharedMemory && sharedMemory->valid())
@@ -291,6 +251,8 @@ int32_t main(int32_t argc, char **argv) {
                 // std::cout << "lambda: groundSteering = " << gsr.groundSteering() << std::endl;
             };
 
+            od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
+
             // Get the distance sensor data
             opendlv::proxy::DistanceReading distanceReading;
             std::mutex distanceMutex;
@@ -309,19 +271,17 @@ int32_t main(int32_t argc, char **argv) {
                 angularVelocity = cluon::extractMessage<opendlv::proxy::AngularVelocityReading>(std::move(env));
             };
 
-            od4.dataTrigger(opendlv::proxy::DistanceReading::ID(), onDistanceReading);
-            od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
-            od4.dataTrigger(opendlv::proxy::AngularVelocityReading::ID(), onAngularVelocityReading);
 
-            double error;
-            double previousError = 0;
-            double steadyStateError = 0;
-            double rateOfChangeError = 0;
+            od4.dataTrigger(opendlv::proxy::DistanceReading::ID(), onDistanceReading);
+            od4.dataTrigger(opendlv::proxy::AngularVelocityReading::ID(), onAngularVelocityReading);
 
             // Initialize fstream for storing frame by frame values
             std::ofstream fout;
             fout.open("/tmp/output.csv");
             fout << "sampleTimeStamp,groundSteering,output" << std::endl;
+
+            // Previous timestamp
+            std::time_t previousTimeStamp = 0;
 
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning())
@@ -448,31 +408,13 @@ int32_t main(int32_t argc, char **argv) {
                     averageDistanceRight = 0;
                 }
 
-                // Calculate the error based on the average distances
-                // TODO: Check for calibration before this step
-                error = averageDistanceLeft - averageDistanceRight; // Error in pixels
-                
-                steadyStateError += error;
-                rateOfChangeError = error - previousError;
-
-                // // PID Controller
-                // double Proportional = error * kP;
-                // double Integral = steadyStateError * kI;
-                // double Derivative = rateOfChangeError * kD;
-
-                // // The output goes into the ground steering request
-                // double output = Proportional + Integral + Derivative;
-                // if (output > 0.22107488) output = 0.22107488;
-                // else if (output < -0.22107488) output = -0.22107488;
-
-                // previousError = error;
-
                 if (timeStamp.first) {
                     currentTimeStamp = cluon::time::toMicroseconds(timeStamp.second);
                 }
 
                 float ground;
                 float distance;
+                float angular;
 
                 // If you want to access the latest received ground steering, don't forget to lock the mutex:
                 {
@@ -544,13 +486,37 @@ int32_t main(int32_t argc, char **argv) {
                     cv::waitKey(1);
                 }
 
-                double output = angular / 249;
+                double output = angular / 289;
+                
+                if (output > 0.22107488) output = 0.22107488;
+                else if (output < -0.22107488) output = -0.22107488;
 
-                // std::cout << "group_18;" << std::to_string(currentTimeStamp) << ";" << "\tGround" << ground << "\t ; Angular: " << angular << std::endl;
-                std::cout << "group_18;" << std::to_string(currentTimeStamp) << ";" << ground << ";" << output << std::endl;
-                fout << std::to_string(currentTimeStamp) << "," << ground << "," << output << std::endl;
+                if (previousTimeStamp < currentTimeStamp) {
+                    steeringQueue.push(ground);
+                    timestampQueue.push(currentTimeStamp);
+
+                    if (queueCounter < 2) {
+                        queueCounter++;
+                    }
+                    else {
+                        if (steeringQueue.empty()) {
+                            // std::cout << std::to_string(currentTimeStamp) << "," << ground << "," << output << std::endl;
+                            fout << std::to_string(currentTimeStamp) << "," << ground << "," << output << std::endl;                    
+                        } 
+                        else {
+                            // std::cout << "group_18," << std::to_string(timestampQueue.front()) << "," << steeringQueue.front() << "," << output << std::endl;
+                            fout << std::to_string(timestampQueue.front()) << "," << steeringQueue.front() << "," << output << std::endl;
+                            timestampQueue.pop();
+                            steeringQueue.pop();
+                        }
+                    }   
+                }
+                else {
+                    // std::cout << std::to_string(currentTimeStamp) << "," << ground << "," << output << std::endl;
+                    fout << std::to_string(currentTimeStamp) << "," << ground << "," << output << std::endl;
+                }
+                previousTimeStamp = currentTimeStamp;
             }
-
             fout.close();
         }
         retCode = 0;
