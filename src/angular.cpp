@@ -280,6 +280,9 @@ int32_t main(int32_t argc, char **argv) {
             fout.open("/tmp/output.csv");
             fout << "sampleTimeStamp,groundSteering,output" << std::endl;
 
+            // Previous timestamp
+            std::time_t previousTimeStamp = 0;
+
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning())
             {
@@ -488,24 +491,31 @@ int32_t main(int32_t argc, char **argv) {
                 if (output > 0.22107488) output = 0.22107488;
                 else if (output < -0.22107488) output = -0.22107488;
 
-                steeringQueue.push(ground);
-                timestampQueue.push(currentTimeStamp);
+                if (previousTimeStamp < currentTimeStamp) {
+                    steeringQueue.push(ground);
+                    timestampQueue.push(currentTimeStamp);
 
-                if (queueCounter < 2) {
-                    queueCounter++;
+                    if (queueCounter < 2) {
+                        queueCounter++;
+                    }
+                    else {
+                        if (steeringQueue.empty()) {
+                            // std::cout << std::to_string(currentTimeStamp) << "," << ground << "," << output << std::endl;
+                            fout << std::to_string(currentTimeStamp) << "," << ground << "," << output << std::endl;                    
+                        } 
+                        else {
+                            // std::cout << "group_18," << std::to_string(timestampQueue.front()) << "," << steeringQueue.front() << "," << output << std::endl;
+                            fout << std::to_string(timestampQueue.front()) << "," << steeringQueue.front() << "," << output << std::endl;
+                            timestampQueue.pop();
+                            steeringQueue.pop();
+                        }
+                    }   
                 }
                 else {
-                    if (steeringQueue.empty()) {
-                        // std::cout << std::to_string(currentTimeStamp) << "," << ground << "," << output << std::endl;
-                        fout << std::to_string(currentTimeStamp) << "," << ground << "," << output << std::endl;                    
-                    } 
-                    else {
-                        // std::cout << "group_18," << std::to_string(timestampQueue.front()) << "," << steeringQueue.front() << "," << output << std::endl;
-                        fout << std::to_string(timestampQueue.front()) << "," << steeringQueue.front() << "," << output << std::endl;
-                        timestampQueue.pop();
-                        steeringQueue.pop();
-                    }
-                }   
+                    // std::cout << std::to_string(currentTimeStamp) << "," << ground << "," << output << std::endl;
+                    fout << std::to_string(currentTimeStamp) << "," << ground << "," << output << std::endl;
+                }
+                previousTimeStamp = currentTimeStamp;
             }
             fout.close();
         }
