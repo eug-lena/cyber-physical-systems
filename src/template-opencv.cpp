@@ -31,9 +31,9 @@
 #include "ImageDenoiser.hpp"
 
 // Lower threshold for detecting blue cones
-cv::Scalar blueLow = cv::Scalar(109, 68, 42);
+cv::Scalar blueLow = cv::Scalar(107, 111, 45);
 // Higher threshold for detecting blue cones
-cv::Scalar blueHigh = cv::Scalar(135, 250, 120);
+cv::Scalar blueHigh = cv::Scalar(140, 155, 86);
 // Lower threshold for detecting yellow cones
 cv::Scalar yellowLow = cv::Scalar(11, 20, 128);
 // Higher threshold for detecting yellow cones
@@ -50,7 +50,7 @@ int yellowThreshold = 30;
 int yellowMaxValue = 255;
 
 // PID constants
-double kP = 0.0070;
+double kP = 0.005;
 double kI = 0;
 double kD = 0;
 
@@ -295,12 +295,27 @@ int32_t main(int32_t argc, char **argv) {
                 distanceReading = cluon::extractMessage<opendlv::proxy::DistanceReading>(std::move(env));
             };
 
+            // Get the angular velocity data
+            opendlv::proxy::AngularVelocityReading angularVelocity;
+            std::mutex angularVelocityMutex;
+            auto onAngularVelocityReading = [&angularVelocity, &angularVelocityMutex](cluon::data::Envelope &&env)
+            {
+                std::lock_guard<std::mutex> lck(angularVelocityMutex);
+                angularVelocity = cluon::extractMessage<opendlv::proxy::AngularVelocityReading>(std::move(env));
+            };
+
             od4.dataTrigger(opendlv::proxy::DistanceReading::ID(), onDistanceReading);
+            od4.dataTrigger(opendlv::proxy::AngularVelocityReading::ID(), onAngularVelocityReading);
 
             double error;
             double previousError = 0;
             double steadyStateError = 0;
             double rateOfChangeError = 0;
+
+            double angular;
+
+            bool isCalibrated = false;
+            bool isLeftBlue = true;
 
             // Initialize fstream for storing frame by frame values
             std::ofstream fout;
@@ -330,7 +345,7 @@ int32_t main(int32_t argc, char **argv) {
                     // Add TimeStamp
                     timeStamp = sharedMemory->getTimeStamp();
                 }
-                // TODO: Here, you can add some code to check the sampleTimePoint when the current frame was captured.
+
                 sharedMemory->unlock();
 
                 // Variable for the center bottom of the image
@@ -372,10 +387,73 @@ int32_t main(int32_t argc, char **argv) {
                 // Find contours from the mask
                 cv::findContours(processedBlue, contoursBlue, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
                 cv::findContours(processedYellow, contoursYellow, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-                
+
+                // Angular velocity data
+                {
+                    std::lock_guard<std::mutex> lck(angularVelocityMutex);
+
+                    angular = angularVelocity.angularVelocityZ();
+                }
+
+                // TODO: Implement calibration step here
+                // if not calibrated, go straight and continue to the next loop iteration
+                // if two types of cones exist on screen, calibrate it as it should be
+                // if only one type of cone, use angular velocity
+                // if no cone, go straight
+                if (isCalibrated == false) {
+                    //std::cout << "Calibrating..." << std::endl;
+                    // If the size of the blue and yellow contours is greater than 0
+                    // Check which cones are on the left and right side of the track
+                    if (contoursBlue.size() != 0 && contoursYellow.size() != 0) {
+                        // Check if the blue cones are on the left side of the track
+                        //std::cout << "Both cones are detected" << std::endl;
+
+                        if (contoursBlue[0][0].x > contoursYellow[0][0].x) {                            
+                            // Yellow cones are on the left side
+                            isLeftBlue = false;
+                        }
+                        // Set the calibration flag to true
+                        isCalibrated = true;
+                    }
+                    // Else if there is only one type of cones
+                    else {
+                        std::cout << "Only one type of cones detected" << std::endl;
+                        // If we only detect blue cones
+                        if (contoursBlue.size() != 0) {
+                            std::cout << "Only blue cones detected" << std::endl;
+                            // Check angular velocity
+                            if (angular > 0) {
+                                // Blue cones are on the right side
+                                isLeftBlue = false;
+                            } else {
+                                // Blue cones are on the left side
+                                isLeftBlue = true;
+                            }
+                            isCalibrated = true;
+                        }
+                        // Else if we only detect yellow cones
+                        else if (contoursYellow.size() != 0) {
+                            std::cout << "Only yellow cones detected" << std::endl;
+                            // Check angular velocity
+                            if (angular > 0) {
+                                // Yellow cones are on the right side
+                                isLeftBlue = true;
+                            } else {
+                                // Yellow cones are on the left side
+                                isLeftBlue = false;
+                            }
+                            isCalibrated = true;
+                        }
+                    }
+                }
+
+                //std::cout << "isLeftBlue: " << isLeftBlue << std::endl;
+
+                // This runs once the calibration is done
+
                 // Declare variables to keep track of the average distance to the left part and right part of the track
-                double averageDistanceLeft = 0;
-                double averageDistanceRight = 0;
+                double averageDistanceBlue = 0;
+                double averageDistanceYellow = 0;
 
                 // Iterate through the blue contours
                 for(size_t i = 0; i < contoursBlue.size(); i++){
@@ -394,15 +472,15 @@ int32_t main(int32_t argc, char **argv) {
                         cv::rectangle(outputImage, rect.tl(), rect.br(), cv::Scalar(255, 0, 0), 2);
 
                         // Add the distance from the car to the center of a cone
-                        averageDistanceLeft += cv::norm(imageCenter - center);
+                        averageDistanceBlue += cv::norm(imageCenter - center);
                     }
                 }
 
                 // Divide by the number of blue cones to get the average distance
                 if (contoursBlue.size() != 0) {
-                    averageDistanceLeft /= contoursBlue.size();
+                    averageDistanceBlue /= contoursBlue.size();
                 } else {
-                    averageDistanceLeft = 0;
+                    averageDistanceBlue = 0;
                 }
 
                 // Iterate through the yellow contours
@@ -421,20 +499,34 @@ int32_t main(int32_t argc, char **argv) {
                         cv::rectangle(outputImage, rect.tl(), rect.br(), cv::Scalar(0, 255, 255), 2);
 
                         // Add the distance from the car to the center of a cone
-                        averageDistanceRight += cv::norm(imageCenter - center);
+                        averageDistanceYellow += cv::norm(imageCenter - center);
                     }
                 }
 
                 // Divide by the number of yellow cones to get the average distance
                 if (contoursYellow.size() != 0) {
-                    averageDistanceRight /= contoursYellow.size();
+                    averageDistanceYellow /= contoursYellow.size();
                 } else {
-                    averageDistanceRight = 0;
+                    averageDistanceYellow = 0;
                 }
 
+                // TODO: If the blue cones are in the left,
+                // B | --- x ------- | Y -> (R - L) > 0 -> we want to turn right, but it won't because turning right needs < 0
+                // B | --- x ------- | Y -> (L - R) < 0 -> we want to turn right, and it is correct
+                // negative -> turn right, positive -> turn left
+
+                // B | ------- x --- | Y -> (R - L) < 0 -> turn left, but it's not because left is > 0
+                // B | ------- x --- | Y -> (L - R) > 0 -> turn left, which is correct
+
+
+                if (isLeftBlue) {
+                    error = averageDistanceBlue - averageDistanceYellow;
+                } else {
+                    error = averageDistanceYellow - averageDistanceBlue;
+                }
+                
                 // Calculate the error based on the average distances
-                // TODO: Check for calibration before this step
-                error = averageDistanceLeft - averageDistanceRight; // Error in pixels
+                // error = averageDistanceBlue - averageDistanceYellow; // Error in pixels
                 
                 steadyStateError += error;
                 rateOfChangeError = error - previousError;
@@ -446,8 +538,17 @@ int32_t main(int32_t argc, char **argv) {
 
                 // The output goes into the ground steering request
                 double output = Proportional + Integral + Derivative;
-                if (averageDistanceLeft == 0) output = -1;
-                else if (averageDistanceRight == 0) output = 1;
+                
+                // LENA'S CODE
+                if (isLeftBlue) {
+                    if (averageDistanceBlue == 0) output = 1;
+                    else if (averageDistanceYellow == 0) output = -1;
+                }
+                else {
+                    if (averageDistanceBlue == 0) output = -1;
+                    else if (averageDistanceYellow == 0) output = 1;
+                }
+                // END OF LENA'S CODE
 
                 if (output > 0.22107488) output = 0.22107488;
                 else if (output < -0.22107488) output = -0.22107488;
@@ -525,8 +626,8 @@ int32_t main(int32_t argc, char **argv) {
                     cv::waitKey(1);
                 }
 
-                std::cout << "group_18;" << std::to_string(currentTimeStamp) << ";" << output << std::endl;
-                // std::cout << output << ", original: " << ground << std::endl;
+                // std::cout << "group_18;" << std::to_string(currentTimeStamp) << ";" << output << std::endl;
+                std::cout << output << ", original: " << ground << std::endl;
                 fout << std::to_string(currentTimeStamp) << "," << ground << "," << output << std::endl;
             }
 

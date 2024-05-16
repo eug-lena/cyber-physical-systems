@@ -34,6 +34,13 @@
 cv::Scalar blueLow = cv::Scalar(107, 111, 45);
 // Higher threshold for detecting blue cones
 cv::Scalar blueHigh = cv::Scalar(140, 155, 86);
+
+// Lower threshold for detecting blue cones
+cv::Scalar blueLow = cv::Scalar(109, 68, 42);
+// Higher threshold for detecting blue cones
+cv::Scalar blueHigh = cv::Scalar(135, 250, 120);
+
+
 // Lower threshold for detecting yellow cones
 cv::Scalar yellowLow = cv::Scalar(11, 20, 128);
 // Higher threshold for detecting yellow cones
@@ -284,8 +291,6 @@ int32_t main(int32_t argc, char **argv) {
                 // std::cout << "lambda: groundSteering = " << gsr.groundSteering() << std::endl;
             };
 
-            od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
-
             // Get the distance sensor data
             opendlv::proxy::DistanceReading distanceReading;
             std::mutex distanceMutex;
@@ -304,8 +309,8 @@ int32_t main(int32_t argc, char **argv) {
                 angularVelocity = cluon::extractMessage<opendlv::proxy::AngularVelocityReading>(std::move(env));
             };
 
-
             od4.dataTrigger(opendlv::proxy::DistanceReading::ID(), onDistanceReading);
+            od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
             od4.dataTrigger(opendlv::proxy::AngularVelocityReading::ID(), onAngularVelocityReading);
 
             double error;
@@ -468,7 +473,6 @@ int32_t main(int32_t argc, char **argv) {
 
                 float ground;
                 float distance;
-                float angular;
 
                 // If you want to access the latest received ground steering, don't forget to lock the mutex:
                 {
