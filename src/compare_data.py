@@ -16,6 +16,7 @@ def display_chart():
     # Plot our algorithm's output
     plt.plot(df['output'], color='blue', label='Our output')
     # Set the x-axis labels to sampleTimeStamp
+    # Commented out for readability
     # plt.xticks(ticks=df['sampleTimeStamp'], rotation=90)
     # Set the plot title
     plt.title("groundSteering")
@@ -40,11 +41,11 @@ def compare_values():
             data_points += 1
 
             # Calculate the error margins
-            lower_bound = groundSteering * 0.75
-            upper_bound = groundSteering * 1.25
+            lower_bound = abs(groundSteering) * 0.75
+            upper_bound = abs(groundSteering) * 1.25
 
             # Check if our output is within +/- 25% of the original groundSteering
-            if output > lower_bound and output < upper_bound:
+            if abs(output) > lower_bound and abs(output) < upper_bound:
                 valid += 1
                 is_valid = True
             else:
@@ -65,7 +66,7 @@ def main():
 if __name__ == '__main__':
     try:
         # Read the .csv file or handle the exception if it deosn't exist
-        df = pd.read_csv("output.csv", sep=',')
+        df = pd.read_csv("src/output.csv", sep=',')
         main()
     except FileNotFoundError:
         print("File not found.")
