@@ -283,6 +283,10 @@ int32_t main(int32_t argc, char **argv) {
             // Previous timestamp
             std::time_t previousTimeStamp = 0;
 
+            // Check if the car is going backwards or forwards
+            bool isForward = true;
+            int frameCounter = 0;
+
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning())
             {
@@ -412,6 +416,20 @@ int32_t main(int32_t argc, char **argv) {
                     currentTimeStamp = cluon::time::toMicroseconds(timeStamp.second);
                 }
 
+                // Check if it's going forwards or backwards
+                // After frame 2, we determine the direction and we proceed with the rest of the steps
+                // We assume that it's going forward at first
+                if (frameCounter < 1) {
+                    frameCounter++;
+                    previousTimeStamp = currentTimeStamp;
+                } else if (frameCounter == 1){
+                    if (previousTimeStamp < currentTimeStamp) {
+                        isForward = true;
+                    } else {
+                        isForward = false;
+                    }
+                }                
+
                 float ground;
                 float distance;
                 float angular;
@@ -491,7 +509,7 @@ int32_t main(int32_t argc, char **argv) {
                 if (output > 0.22107488) output = 0.22107488;
                 else if (output < -0.22107488) output = -0.22107488;
 
-                if (previousTimeStamp < currentTimeStamp) {
+                if (isForward == true) {
                     steeringQueue.push(ground);
                     timestampQueue.push(currentTimeStamp);
 
