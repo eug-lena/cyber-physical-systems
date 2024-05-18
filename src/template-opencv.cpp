@@ -320,7 +320,7 @@ int32_t main(int32_t argc, char **argv) {
             // Initialize fstream for storing frame by frame values
             std::ofstream fout;
             fout.open("/tmp/output.csv");
-            fout << "sampleTimeStamp,groundSteering,output" << std::endl;
+            fout << "sampleTimeStamp;groundSteering;output" << std::endl;
 
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning())
@@ -628,7 +628,7 @@ int32_t main(int32_t argc, char **argv) {
 
                 // std::cout << "group_18;" << std::to_string(currentTimeStamp) << ";" << output << std::endl;
                 std::cout << output << ", original: " << ground << std::endl;
-                fout << std::to_string(currentTimeStamp) << "," << ground << "," << output << std::endl;
+                fout << std::to_string(currentTimeStamp) << ";" << ground << ";" << output << std::endl;
             }
 
             fout.close();

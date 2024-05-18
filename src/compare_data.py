@@ -73,7 +73,7 @@ def main():
 if __name__ == '__main__':
     try:
         # Read the .csv file or handle the exception if it deosn't exist
-        df = pd.read_csv("src/output.csv", sep=',')
+        df = pd.read_csv("src/output.csv", sep=';')
         main()
     except FileNotFoundError:
         print("File not found.")
