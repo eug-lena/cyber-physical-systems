@@ -41,15 +41,22 @@ def compare_values():
             data_points += 1
 
             # Calculate the error margins
-            lower_bound = abs(groundSteering) * 0.75
-            upper_bound = abs(groundSteering) * 1.25
+            lower_bound = groundSteering * 0.75
+            upper_bound = groundSteering * 1.25
 
             # Check if our output is within +/- 25% of the original groundSteering
-            if abs(output) > lower_bound and abs(output) < upper_bound:
-                valid += 1
-                is_valid = True
+            if output >= 0:
+                if output > lower_bound and output < upper_bound:
+                    valid += 1
+                    is_valid = True
+                else:
+                    is_valid = False
             else:
-                is_valid = False
+                if output < lower_bound and output > upper_bound:
+                    valid += 1
+                    is_valid = True
+                else:
+                    is_valid = False
         
             # Printing the data for debugging
             # It's expensive, so keep it commented out if not needed
@@ -66,7 +73,7 @@ def main():
 if __name__ == '__main__':
     try:
         # Read the .csv file or handle the exception if it deosn't exist
-        df = pd.read_csv("src/output.csv", sep=',')
+        df = pd.read_csv("src/output.csv", sep=';')
         main()
     except FileNotFoundError:
         print("File not found.")

@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2020  Christian Berger
+ * Copyright (C) 2024 Christian Berger, Ionel Pop, Adrian Hassa,
+ *                        Teodora Portase, Vasilena Karaivanova
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,11 +9,11 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 // Include the single-file, header-only middleware libcluon to create high-performance microservices
@@ -27,17 +28,24 @@
 // Include fstream & iostream
 #include <iostream>
 #include <fstream>
+
+// Include queue library 
 #include <queue>
 
+// Include ImageDenoiser header file
 #include "ImageDenoiser.hpp"
 
-// Lower threshold for detecting blue cones
+// Define min and max steering angles (+/-24% of max/min original groundSteering angles)
+#define MAX_STEERING 0.22107488
+#define MIN_STEERING -0.22107488
+
+// Lower bound for detecting blue cones
 cv::Scalar blueLow = cv::Scalar(109, 68, 42);
-// Higher threshold for detecting blue cones
+// Upper bound for detecting blue cones
 cv::Scalar blueHigh = cv::Scalar(135, 250, 120);
-// Lower threshold for detecting yellow cones
+// Lower bound for detecting yellow cones
 cv::Scalar yellowLow = cv::Scalar(11, 20, 128);
-// Higher threshold for detecting yellow cones
+// Upper bound for detecting yellow cones
 cv::Scalar yellowHigh = cv::Scalar(54, 198, 232);
 
 // Blue threshold
@@ -50,13 +58,16 @@ int yellowThreshold = 30;
 // Yellow max value
 int yellowMaxValue = 255;
 
-// Queue for storing the first timestamps
-std::queue<double> steeringQueue;
-std::queue<std::time_t> timestampQueue;
+// Size of the frame delay queue
+int queueSize = 2;
+
+// Queue to delay our output by 2 frames if the car is moving forward
+std::queue<double> steeringQueue;       // Store original groundSteering angles
+std::queue<std::time_t> timestampQueue; // Store frame timestamps
 
 int queueCounter = 0; // To count the first elements
 
-// Callback function to avoid the warnings
+// Callback function used as a debug menu when detecting blue cones
 static void onBlueTrackbar(int value, void *userdata) {
     int trackbarIndex = reinterpret_cast<intptr_t>(userdata);
 
@@ -98,12 +109,11 @@ static void onBlueTrackbar(int value, void *userdata) {
     }
 }
 
-static void onYellowTrackbar(int value, void *userdata)
-{
+// Callback function used as a debug menu when detecting yellow cones
+static void onYellowTrackbar(int value, void *userdata) {
     int trackbarIndex = reinterpret_cast<intptr_t>(userdata);
 
-    switch (trackbarIndex)
-    {
+    switch (trackbarIndex) {
     case 0:
         // Hue Low
         yellowLow[0] = value;
@@ -152,12 +162,15 @@ int32_t main(int32_t argc, char **argv) {
         (0 == commandlineArguments.count("height")))
     {
         std::cerr << argv[0] << " attaches to a shared memory area containing an ARGB image." << std::endl;
-        std::cerr << "Usage:   " << argv[0] << " --cid=<OD4 session> --name=<name of shared memory area> [--verbose]" << std::endl;
+        std::cerr << "Usage:   " << argv[0] << " --cid=<OD4 session> --name=<name of shared memory area> [--verbose [--blue] [--yellow]] " << std::endl;
         std::cerr << "         --cid:    CID of the OD4Session to send and receive messages" << std::endl;
         std::cerr << "         --name:   name of the shared memory area to attach" << std::endl;
         std::cerr << "         --width:  width of the frame" << std::endl;
         std::cerr << "         --height: height of the frame" << std::endl;
-        std::cerr << "Example: " << argv[0] << " --cid=253 --name=img --width=640 --height=480 --verbose" << std::endl;
+        std::cerr << "         --verbose: display the image on the screen" << std::endl;
+        std::cerr << "         --blue: display a debugging window for detecting blue cones" << std::endl;
+        std::cerr << "         --yellow: display a debugging window for detecting yellow cones" << std::endl;
+        std::cerr << "Example: " << argv[0] << " --cid=253 --name=img --width=640 --height=480 --verbose --blue --yellow" << std::endl;
     }
     else {
         // Extract the values from the command line parameters
@@ -169,24 +182,30 @@ int32_t main(int32_t argc, char **argv) {
         const bool YELLOW{commandlineArguments.count("yellow") != 0};
 
         // If the blue command argument is passed, we debug the blue detection
-        if (BLUE) {
+        if (VERBOSE && BLUE) {
             cv::namedWindow("Mask Blue", cv::WINDOW_NORMAL);
 
+            // Create a section for editing the lower boundary for hue
             cv::createTrackbar("Hue - low", "Mask Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(0));
             cv::setTrackbarPos("Hue - low", "Mask Blue", static_cast<int>(blueLow[0]));
 
+            // Create a section for editing the upper boundary for hue
             cv::createTrackbar("Hue - high", "Mask Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(1));
             cv::setTrackbarPos("Hue - high", "Mask Blue", static_cast<int>(blueHigh[0]));
 
+            // Create a section for editing the lower boundary for saturation
             cv::createTrackbar("Sat - low", "Mask Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(2));
             cv::setTrackbarPos("Sat - low", "Mask Blue", static_cast<int>(blueLow[1]));
 
+            // Create a section for editing the upper boundary for saturation
             cv::createTrackbar("Sat - high", "Mask Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(3));
             cv::setTrackbarPos("Sat - high", "Mask Blue", static_cast<int>(blueHigh[1]));
 
+            // Create a section for editing the lower boundary for value
             cv::createTrackbar("Val - low", "Mask Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(4));
             cv::setTrackbarPos("Val - low", "Mask Blue", static_cast<int>(blueLow[2]));
 
+            // Create a section for editing the upper boundary for value
             cv::createTrackbar("Val - high", "Mask Blue", NULL, 255, onBlueTrackbar, reinterpret_cast<void *>(5));
             cv::setTrackbarPos("Val - high", "Mask Blue", static_cast<int>(blueHigh[2]));
 
@@ -200,24 +219,30 @@ int32_t main(int32_t argc, char **argv) {
         }
 
         // If the yellow command argument is passed, we debug the yellow detection
-        if (YELLOW) {
+        if (VERBOSE && YELLOW) {
             cv::namedWindow("Mask Yellow", cv::WINDOW_NORMAL);
 
+            // Create a section for editing the lower boundary for hue
             cv::createTrackbar("Hue - low", "Mask Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(0));
             cv::setTrackbarPos("Hue - low", "Mask Yellow", static_cast<int>(yellowLow[0]));
 
+            // Create a section for editing the upper boundary for hue
             cv::createTrackbar("Hue - high", "Mask Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(1));
             cv::setTrackbarPos("Hue - high", "Mask Yellow", static_cast<int>(yellowHigh[0]));
 
+            // Create a section for editing the lower boundary for saturation
             cv::createTrackbar("Sat - low", "Mask Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(2));
             cv::setTrackbarPos("Sat - low", "Mask Yellow", static_cast<int>(yellowLow[1]));
 
+            // Create a section for editing the upper boundary for saturation
             cv::createTrackbar("Sat - high", "Mask Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(3));
             cv::setTrackbarPos("Sat - high", "Mask Yellow", static_cast<int>(yellowHigh[1]));
 
+            // Create a section for editing the lower boundary for value
             cv::createTrackbar("Val - low", "Mask Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(4));
             cv::setTrackbarPos("Val - low", "Mask Yellow", static_cast<int>(yellowLow[2]));
 
+            // Create a section for editing the upper boundary for value
             cv::createTrackbar("Val - high", "Mask Yellow", NULL, 255, onYellowTrackbar, reinterpret_cast<void *>(5));
             cv::setTrackbarPos("Val - high", "Mask Yellow", static_cast<int>(yellowHigh[2]));
 
@@ -232,14 +257,14 @@ int32_t main(int32_t argc, char **argv) {
 
         // Attach to the shared memory.
         std::unique_ptr<cluon::SharedMemory> sharedMemory{new cluon::SharedMemory{NAME}};
-        if (sharedMemory && sharedMemory->valid())
-        {
+        if (sharedMemory && sharedMemory->valid()) {
             std::clog << argv[0] << ": Attached to shared memory '" << sharedMemory->name() << " (" << sharedMemory->size() << " bytes)." << std::endl;
 
             // Interface to a running OpenDaVINCI session where network messages are exchanged.
             // The instance od4 allows you to send and receive messages.
             cluon::OD4Session od4{static_cast<uint16_t>(std::stoi(commandlineArguments["cid"]))};
 
+            // Ground stering request
             opendlv::proxy::GroundSteeringRequest gsr;
             std::mutex gsrMutex;
             auto onGroundSteeringRequest = [&gsr, &gsrMutex](cluon::data::Envelope &&env)
@@ -252,17 +277,9 @@ int32_t main(int32_t argc, char **argv) {
             };
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
+            // End of ground stering request
 
-            // Get the distance sensor data
-            opendlv::proxy::DistanceReading distanceReading;
-            std::mutex distanceMutex;
-            auto onDistanceReading = [&distanceReading, &distanceMutex](cluon::data::Envelope &&env)
-            {
-                std::lock_guard<std::mutex> lck(distanceMutex);
-                distanceReading = cluon::extractMessage<opendlv::proxy::DistanceReading>(std::move(env));
-            };
-
-            // Get the angular velocity data
+            // Angular Velocity Reading
             opendlv::proxy::AngularVelocityReading  angularVelocity;
             std::mutex angularVelocityMutex;
             auto onAngularVelocityReading = [&angularVelocity, &angularVelocityMutex](cluon::data::Envelope &&env)
@@ -271,25 +288,23 @@ int32_t main(int32_t argc, char **argv) {
                 angularVelocity = cluon::extractMessage<opendlv::proxy::AngularVelocityReading>(std::move(env));
             };
 
-
-            od4.dataTrigger(opendlv::proxy::DistanceReading::ID(), onDistanceReading);
             od4.dataTrigger(opendlv::proxy::AngularVelocityReading::ID(), onAngularVelocityReading);
+            // End of angular velocity reading
 
-            // Initialize fstream for storing frame by frame values
+            // Initialize fstream for storing frame by frame values for comparison
             std::ofstream fout;
             fout.open("/tmp/output.csv");
-            fout << "sampleTimeStamp,groundSteering,output" << std::endl;
+            fout << "sampleTimeStamp;groundSteering;output" << std::endl;
 
             // Previous timestamp
             std::time_t previousTimeStamp = 0;
-
             // Check if the car is going backwards or forwards
             bool isForward = true;
+            // Counter for how many frames have passed
             int frameCounter = 0;
 
             // Endless loop; end the program by pressing Ctrl-C.
-            while (od4.isRunning())
-            {
+            while (od4.isRunning()) {
                 // OpenCV data structure to hold an image.
                 cv::Mat outputImage;
 
@@ -358,7 +373,7 @@ int32_t main(int32_t argc, char **argv) {
                 double averageDistanceRight = 0;
 
                 // Iterate through the blue contours
-                for(size_t i = 0; i < contoursBlue.size(); i++){
+                for(size_t i = 0; i < contoursBlue.size(); i++) {
                     // Create a rectangle out of the vectors
                     cv::Rect rect = cv::boundingRect(contoursBlue[i]);
 
@@ -367,9 +382,8 @@ int32_t main(int32_t argc, char **argv) {
 
                     // Check if the rectangle is not really small
                     if(rect.area() > 100) {
-                        // Draw the rectangle on the output image 
-                        // Start point
-                        cv::Point center = (rect.tl() + rect.br()) / 2;
+                        // Draw the rectangle on the output image
+                        cv::Point center = (rect.tl() + rect.br()) / 2;     // Start point
                         cv::line(outputImage, center, imageCenter, cv::Scalar(0, 255, 0), 3);
                         cv::rectangle(outputImage, rect.tl(), rect.br(), cv::Scalar(255, 0, 0), 2);
 
@@ -386,7 +400,7 @@ int32_t main(int32_t argc, char **argv) {
                 }
 
                 // Iterate through the yellow contours
-                for(size_t i = 0; i < contoursYellow.size(); i++){
+                for(size_t i = 0; i < contoursYellow.size(); i++) {
                     // Create a rectangle out of the vectors
                     cv::Rect rect = cv::boundingRect(contoursYellow[i]);
 
@@ -394,7 +408,7 @@ int32_t main(int32_t argc, char **argv) {
                     rect.y += 230;
                     
                     // Check if the rectangle is not really small
-                    if(rect.area() > 100 && rect.y < 450 && (rect.x > 390 || rect.x < 340)){
+                    if(rect.area() > 100 && rect.y < 450 && (rect.x > 390 || rect.x < 340)) {
                         // Draw the rectangle on the output image
                         cv::Point center = (rect.tl() + rect.br()) / 2;
                         cv::line(outputImage, center, imageCenter, cv::Scalar(0, 255, 0), 3);
@@ -416,13 +430,13 @@ int32_t main(int32_t argc, char **argv) {
                     currentTimeStamp = cluon::time::toMicroseconds(timeStamp.second);
                 }
 
-                // Check if it's going forwards or backwards
+                // Check if the video is played forwards or backwards
                 // After frame 2, we determine the direction and we proceed with the rest of the steps
                 // We assume that it's going forward at first
                 if (frameCounter < 1) {
                     frameCounter++;
                     previousTimeStamp = currentTimeStamp;
-                } else if (frameCounter == 1){
+                } else if (frameCounter == 1) {
                     if (previousTimeStamp < currentTimeStamp) {
                         isForward = true;
                     } else {
@@ -430,28 +444,18 @@ int32_t main(int32_t argc, char **argv) {
                     }
                 }                
 
-                float ground;
-                float distance;
-                float angular;
+                float ground;       // Original GroundSteeringRequest we want to match
+                double angular;     // AngularVelocity gotten from sensor data
 
                 // If you want to access the latest received ground steering, don't forget to lock the mutex:
                 {
                     std::lock_guard<std::mutex> lck(gsrMutex);
                     ground = gsr.groundSteering();
-                    // std::cout << "main: groundSteering = " << ground << std::endl;
-                }
-
-                // Distance data
-                {
-                    std::lock_guard<std::mutex> lck(distanceMutex);
-
-                    distance = distanceReading.distance();
                 }
 
                 // Angular velocity data
                 {
                     std::lock_guard<std::mutex> lck(angularVelocityMutex);
-
                     angular = angularVelocity.angularVelocityZ();
                 }
 
@@ -462,7 +466,7 @@ int32_t main(int32_t argc, char **argv) {
                 std::tm *gmtime = std::gmtime(&currentTimeSec);                          // Convert time_t to tm as UTC time
 
                 // OVERLAY METADATA
-                cv::putText(outputImage, "Insane Raccoons", cv::Point(200, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(36, 0, 201), 1);
+                cv::putText(outputImage, "Group 18", cv::Point(200, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(36, 0, 201), 1);
 
                 std::stringstream metadataStream;
                 metadataStream << "Now:" << std::put_time(gmtime, "%Y-%m-%dT%H:%M:%SZ") << "; ts:" << std::to_string(currentTimeStamp) << "; ";
@@ -470,33 +474,32 @@ int32_t main(int32_t argc, char **argv) {
 
                 cv::putText(outputImage, overlayMetadata, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
 
-                // OVERLAY DISTANCE
-                std::stringstream distanceStream;
-                distanceStream << "Distance: " << distance << " [meters]";
-                std::string overlayDistance = distanceStream.str();
-
-                cv::putText(outputImage, overlayDistance, cv::Point(10, 100), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
-
                 // OVERLAY GROUND
                 std::stringstream groundStream;
                 groundStream << "Ground Steering: " << ground;
                 std::string overlayGround = groundStream.str();
-
                 cv::putText(outputImage, overlayGround, cv::Point(10, 130), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
+                
+                // OVERLAY ANGULAR VELOCITY
+                std::stringstream angularStream;
+                angularStream << "Angular velocity: " << angular << " [Z - Axis]";
+                std::string overlayAngular = angularStream.str();
+                cv::putText(outputImage, overlayAngular, cv::Point(10, 100), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(36, 0, 201), 1);
 
                 // Display image on your screen.
+                // If the verbose flag is set, display the original image and the ROI image
                 if (VERBOSE) {
                     cv::imshow(sharedMemory->name().c_str(), outputImage);
                     cv::imshow("ROI", imageROI);
 
-                    if (BLUE)
-                    {
+                    // If the blue flag is set, display the blue mask and the processed blue image, as well as sliders to adjust HSV values
+                    if (BLUE) {
                         cv::imshow("Mask Blue", maskBlue);
                         cv::imshow("Processed Blue", processedBlue);
                     }
 
-                    if (YELLOW)
-                    {
+                    // If the yellow flag is set, display the yellow mask and the processed yellow image, as well as sliders to adjust HSV values
+                    if (YELLOW) {
                         cv::imshow("Mask Yellow", maskYellow);
                         cv::imshow("Processed Yellow", processedYellow);
                     }
@@ -504,35 +507,52 @@ int32_t main(int32_t argc, char **argv) {
                     cv::waitKey(1);
                 }
 
-                double output = angular / 289;
+                // Divide the angular velocity by approximately 100 and multiply by 0.3
+                // The minimum and maximum values for angularVelocityZ are -101.2573 and 111.0229
+                // The values are different than exactly 100, so we divide by 100 -(-1+11) = 90
+                // However, after playing around with that value, we found that 86 has the best accuracy
+                double output = (angular / 86) * 0.3;
                 
-                if (output > 0.22107488) output = 0.22107488;
-                else if (output < -0.22107488) output = -0.22107488;
-
+                // Clip the output ground steering angle
+                if (output > MAX_STEERING) output = MAX_STEERING;
+                else if (output < MIN_STEERING) output = MIN_STEERING;
+    
+                // If the video is playing forward, we delay the output by 2 frames
+                // If the video is playing backwards, we output the values immediately
                 if (isForward == true) {
+                    // Push the ground steering angle and the timestamp to the queue
                     steeringQueue.push(ground);
                     timestampQueue.push(currentTimeStamp);
 
-                    if (queueCounter < 2) {
+                    // Increment the queue counter to delay the first 2 frames
+                    if (queueCounter < queueSize) {
                         queueCounter++;
                     }
                     else {
                         if (steeringQueue.empty()) {
-                            // std::cout << std::to_string(currentTimeStamp) << "," << ground << "," << output << std::endl;
-                            fout << std::to_string(currentTimeStamp) << "," << ground << "," << output << std::endl;                    
+                            // Output to the console
+                            std::cout << "group_18;" << std::to_string(currentTimeStamp) << ";" << output << std::endl;
+                            // Output to the csv file
+                            fout << std::to_string(currentTimeStamp) << ";" << ground << ";" << output << std::endl;                    
                         } 
                         else {
-                            // std::cout << "group_18," << std::to_string(timestampQueue.front()) << "," << steeringQueue.front() << "," << output << std::endl;
-                            fout << std::to_string(timestampQueue.front()) << "," << steeringQueue.front() << "," << output << std::endl;
+                            // Output to the console
+                            std::cout << "group_18;" << std::to_string(timestampQueue.front()) << ";" << output << std::endl;
+                            // Output to the csv file
+                            fout << std::to_string(timestampQueue.front()) << ";" << steeringQueue.front() << ";" << output << std::endl;
+                            // Pop the first element from the queue to make space for the next frame
                             timestampQueue.pop();
                             steeringQueue.pop();
                         }
                     }   
                 }
                 else {
-                    // std::cout << std::to_string(currentTimeStamp) << "," << ground << "," << output << std::endl;
-                    fout << std::to_string(currentTimeStamp) << "," << ground << "," << output << std::endl;
+                    // Output to the console
+                    std::cout << "group_18;" << std::to_string(currentTimeStamp) << ";" << output << std::endl;
+                    // Output to the csv file
+                    fout << std::to_string(currentTimeStamp) << ";" << ground << ";" << output << std::endl;
                 }
+                // Update the previous timestamp variable
                 previousTimeStamp = currentTimeStamp;
             }
             fout.close();
