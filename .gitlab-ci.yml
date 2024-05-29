@@ -108,6 +108,7 @@ compare:
     # Building previous and current images
     - echo 'Building images ...'
     - ls
+    - docker build . --output . --target temp
     # - docker build -t current-image:latest -f Dockerfile .
     # - git checkout $CI_COMMIT_BRANCH && git pull
     # - git reset --hard HEAD~1
