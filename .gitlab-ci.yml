@@ -89,7 +89,7 @@ release:
     BUILDX_PLATFORM: linux/amd64,linux/arm/v7
 
 compare:
-  # image: ubuntu:latest
+  image: ubuntu:latest
   # services:
     # - docker:stable-dind
   tags:
