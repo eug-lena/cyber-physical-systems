@@ -1,0 +1,30 @@
+version: '2'
+services:
+  h264:
+    image: h264:latest
+    ipc: "host"
+    restart: "unless-stopped"
+    network_mode: "host"
+    volumes:
+    - /tmp:/tmp
+    - $PWD:/host
+    - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+    - DISPLAY=$DISPLAY
+    command: "--cid=253 --name=img RECORDING${VIDEO}.rec"
+    working_dir: "/host"
+    stop_signal: SIGINT
+  main-solution:
+      image: ${ALGO_VERSION}
+      network_mode: "host"
+      depends_on: 
+      - h264
+      restart: "unless-stopped"
+      environment:
+        - DISPLAY=$DISPLAY
+      volumes:
+        - /tmp:/tmp
+      ipc: "host"
+      stdin_open: true
+      tty: true
+      command: "--cid=253 --name=img --width=640 --height=480"
