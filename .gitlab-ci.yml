@@ -108,27 +108,27 @@ compare:
     # Building previous and current images
     - echo 'Building images ...'
     - ls
-    - docker build . --output . --target temp
-    # - docker build -t current-image:latest -f Dockerfile .
-    # - git checkout $CI_COMMIT_BRANCH && git pull
-    # - git reset --hard HEAD~1
-    # - docker build -t previous-image:latest -f Dockerfile .
-    # - git pull
-    # # Cloning the h264 repo
-    # - git clone https://github.com/chalmers-revere/opendlv-video-h264-replay.git
-    # - cd opendlv-video-h264-replay
-    # - docker build -t h264:latest -f Dockerfile .
-    # - cd ..
-    # # Installing docker compose
-    # - curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    # - chmod +x /usr/local/bin/docker-compose
-    # - cd recordings
-    # # Iterating through the videos to compare
-    # - |-
-    #   for i in {1..5}
-    #   do
-    #     echo "Analyzing video ${i} ..." 
-    #     ALGO_VERSION="current-image:latest" VIDEO=${i} docker-compose -f docker-compose.yaml up --no-log-prefix --abort-on-container-exit
-    #     ALGO_VERSION="previous-image:latest" VIDEO=${i} docker-compose -f docker-compose.yaml up --no-log-prefix --abort-on-container-exit
-    #   done
-    # # Todo - add the comparison of the two videos
+    # - docker build . --output . --target temp
+    - docker build -t current-image:latest -f Dockerfile .
+    - git checkout $CI_COMMIT_BRANCH && git pull
+    - git reset --hard HEAD~1
+    - docker build -t previous-image:latest -f Dockerfile .
+    - git pull
+    # Cloning the h264 repo
+    - git clone https://github.com/chalmers-revere/opendlv-video-h264-replay.git
+    - cd opendlv-video-h264-replay
+    - docker build -t h264:latest -f Dockerfile .
+    - cd ..
+    # Installing docker compose
+    - curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    - chmod +x /usr/local/bin/docker-compose
+    - cd recordings
+    # Iterating through the videos to compare
+    - |-
+      for i in {1..5}
+      do
+        echo "Analyzing video ${i} ..." 
+        ALGO_VERSION="current-image:latest" VIDEO=${i} docker-compose -f docker-compose.yaml up --no-log-prefix --abort-on-container-exit
+        ALGO_VERSION="previous-image:latest" VIDEO=${i} docker-compose -f docker-compose.yaml up --no-log-prefix --abort-on-container-exit
+      done
+    # Todo - add the comparison of the two videos
