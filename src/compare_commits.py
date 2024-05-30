@@ -26,7 +26,7 @@ def display_chart():
     # Set the plot title
     plt.title("groundSteering")
     # Set the x-axis label
-    plt.xlabel("sampleTimestamp")
+    plt.xlabel("frameNumber")
     # Set the y-axis label
     plt.ylabel("groundSteering angle")
     # Display the legend
