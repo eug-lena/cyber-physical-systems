@@ -82,9 +82,9 @@ def main():
 if __name__ == '__main__':
     try:
         # Read the .csv file or handle the exception if it doesn't exist
-        df_original = pd.read_csv(f'../recordings/original_{sys.argv[1]}.csv', sep=';')
-        df_current = pd.read_csv(f'../recordings/current_{sys.argv[1]}.csv', sep=';')
-        df_previous = pd.read_csv(f'../recordings/previous_{sys.argv[1]}.csv', sep=';')
+        df_original = pd.read_csv(f'../recordings/original{sys.argv[1]}.csv', sep=';')
+        df_current = pd.read_csv(f'../recordings/current{sys.argv[1]}.csv', sep=';')
+        df_previous = pd.read_csv(f'../recordings/previous{sys.argv[1]}.csv', sep=';')
         main()
     except FileNotFoundError:
         print("File not found.")
