@@ -141,12 +141,12 @@ compare:
           ALGO_VERSION="previous-image:latest" VIDEO=${i} docker compose -f docker-compose.yaml up --no-log-prefix --abort-on-container-exit | grep "group_18" >> ${previous_csv}
           echo "Done analyzing video ${i}"
           
-          # List the files for debugging purposes
-          echo "Listing files after analyzing video ${i} ..."
-          ls
+          # # List the files for debugging purposes
+          # echo "Listing files after analyzing video ${i} ..."
+          # ls
 
-          # List the files in src folder
-          ls ../src
+          # # List the files in src folder
+          # ls ../src
 
           # Run the python script
           python3 ../src/compare_commits.py ${i}
@@ -159,9 +159,7 @@ compare:
   artifacts:
     paths:
       - recordings/plot_1.png
-      - recordings/current1.csv
-      - recordings/previous.csv
-      # - recordings/plot_2.png
-      # - recordings/plot_3.png
-      # - recordings/plot_4.png
-      # - recordings/plot_5.png
+      - recordings/plot_2.png
+      - recordings/plot_3.png
+      - recordings/plot_4.png
+      - recordings/plot_5.png

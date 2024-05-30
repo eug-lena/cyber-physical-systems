@@ -21,7 +21,7 @@ def display_chart():
 
     # Set the x-axis labels to sampleTimeStamp
     # It makes the chart a bit unreadable, but it's in the requirements
-    plt.xticks(ticks=df_current['sampleTimeStamp'], rotation=90)
+    # plt.xticks(ticks=df_current['sampleTimeStamp'], rotation=90)
 
     # Set the plot title
     plt.title("groundSteering")
