@@ -1,5 +1,6 @@
 import pandas as pd
 from matplotlib import pyplot as plt
+import sys
 
 def display_chart():
     # Set the plot size and layout
@@ -12,25 +13,27 @@ def display_chart():
             fontsize=40, color='green', alpha=0.5,
             ha='center', va='center', rotation=0)
     # Plot original groundSteering data
-    plt.plot(df_current['groundSteering'], color='red', label='Original groundSteering')
-    # Plot our algorithm's output
-    plt.plot(df_current['output'], color='blue', label='Our output')
+    plt.plot(df_original['groundSteering'], color='red', label='Original groundSteering')
+    # Plot our algorithm's current output
+    plt.plot(df_current['output'], color='blue', label='Current commit output')
+    # Plot the output from the previous commit
+    plt.plot(df_previous['output'], color='green', label='Previous commit output', alpha=0.5)
 
     # Set the x-axis labels to sampleTimeStamp
-    # Commented out for readability
-    # plt.xticks(ticks=df['sampleTimeStamp'], rotation=90)
+    # It makes the chart a bit unreadable, but it's in the requirements
+    plt.xticks(range(len(df_current['sampleTimeStamp'])), df_current['sampleTimeStamp'], rotation=90)
 
     # Set the plot title
     plt.title("groundSteering")
     # Set the x-axis label
-    plt.xlabel("sampleTimestamp")
+    plt.xlabel("sampleTimeStamp")
     # Set the y-axis label
     plt.ylabel("groundSteering angle")
     # Display the legend
     plt.legend()
 
-    # Save the plot as a .png file
-    plt.savefig("plot.png")
+    # Display the plot
+    plt.savefig(f'plot_{sys.argv[1]}.png')
 
 
 def compare_values():
@@ -72,14 +75,16 @@ def compare_values():
 
 
 def main():
-    compare_values()
+    # compare_values()
     display_chart()
 
 
 if __name__ == '__main__':
     try:
-        # Read the .csv file or handle the exception if it deosn't exist
-        df_current = pd.read_csv("src/current.csv", sep=';')
+        # Read the .csv file or handle the exception if it doesn't exist
+        df_original = pd.read_csv(f'../recordings/original{sys.argv[1]}.csv', sep=';')
+        df_current = pd.read_csv(f'../recordings/current{sys.argv[1]}.csv', sep=';')
+        df_previous = pd.read_csv(f'../recordings/previous{sys.argv[1]}.csv', sep=';')
         main()
     except FileNotFoundError:
         print("File not found.")
