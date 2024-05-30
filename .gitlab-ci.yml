@@ -155,8 +155,8 @@ compare:
     - ls ../src
   artifacts:
     paths:
-      - src/plot_1.png
-      - src/plot_2.png
-      - src/plot_3.png
-      - src/plot_4.png
-      - src/plot_5.png
+      - recordings/plot_1.png
+      - recordings/plot_2.png
+      - recordings/plot_3.png
+      - recordings/plot_4.png
+      - recordings/plot_5.png
