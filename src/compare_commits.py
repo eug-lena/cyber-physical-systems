@@ -12,14 +12,22 @@ def display_chart():
             fontsize=40, color='green', alpha=0.5,
             ha='center', va='center', rotation=0)
     # Plot original groundSteering data
-    plt.plot(df['groundSteering'], color='red', label='Original groundSteering')
+    plt.plot(df_current['groundSteering'], color='red', label='Original groundSteering')
     # Plot our algorithm's output
-    plt.plot(df['output'], color='blue', label='Our output')
+    plt.plot(df_current['output'], color='blue', label='Our output')
+    # Plot the output from the previous commit
+    plt.plot(df_previous['output'], color='green', label='Previous output', alpha=0.5)
+
     # Set the x-axis labels to sampleTimeStamp
-    # Commented out for readability
-    # plt.xticks(ticks=df['sampleTimeStamp'], rotation=90)
+    # It makes the chart a bit unreadable, but it's in the requirements
+    plt.xticks(ticks=df_current['sampleTimeStamp'], rotation=90)
+
     # Set the plot title
     plt.title("groundSteering")
+    # Set the x-axis label
+    plt.xlabel("sampleTimestamp")
+    # Set the y-axis label
+    plt.ylabel("groundSteering angle")
     # Display the legend
     plt.legend()
 
@@ -32,7 +40,7 @@ def compare_values():
     data_points, valid = 0, 0
 
     # Iterate through the data frame rows
-    for index, row in df.iterrows():
+    for index, row in df_current.iterrows():
         groundSteering = row['groundSteering']
         output = row['output']
 
@@ -73,7 +81,8 @@ def main():
 if __name__ == '__main__':
     try:
         # Read the .csv file or handle the exception if it deosn't exist
-        df = pd.read_csv("src/output.csv", sep=';')
+        df_current = pd.read_csv("src/output.csv", sep=';')
+        df_previous = pd.read_csv("src/previous.csv", sep=';')
         main()
     except FileNotFoundError:
         print("File not found.")
