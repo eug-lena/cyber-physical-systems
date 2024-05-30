@@ -127,16 +127,29 @@ compare:
     # - ALGO_VERSION="current-image:latest" VIDEO=1 docker compose -f docker-compose.yaml up --no-log-prefix --abort-on-container-exit
 
     - |-
-      for i in {1..1}
-      do
-        echo "Analyzing video ${i} ..." 
-        ALGO_VERSION="current-image:latest" VIDEO=${i} docker compose -f docker-compose.yaml up --no-log-prefix --abort-on-container-exit | grep "group_18" >> current.csv
-        ALGO_VERSION="previous-image:latest" VIDEO=${i} docker compose -f docker-compose.yaml up --no-log-prefix --abort-on-container-exit | grep "group_18" >> previous.csv
-        echo "Done analyzing video ${i}"
-        ls
-        echo "Current results: "
-        cat current.csv
-        echo "Previous results: "
-        cat previous.csv
-      done
-    # Todo - add the comparison of the two videos
+      for i in {1..5}
+        do
+          echo "Creating csv files ..."
+          current_csv="current_${i}.csv"
+          previous_csv="previous_${i}.csv"
+          echo "group_18;sampleTimeStamp;output" > ${current_csv}
+          echo "group_18;sampleTimeStamp;output" > ${previous_csv}
+          echo "Analyzing video ${i} ..."
+
+          ALGO_VERSION="current-image:latest" VIDEO=${i} docker compose -f docker-compose.yaml up --no-log-prefix --abort-on-container-exit | grep "group_18" >> ${current_csv}
+          ALGO_VERSION="previous-image:latest" VIDEO=${i} docker compose -f docker-compose.yaml up --no-log-prefix --abort-on-container-exit | grep "group_18" >> ${previous_csv}
+          echo "Done analyzing video ${i}"
+          
+          # List the files for debugging purposes
+          ls
+          
+          # Run the python script
+          python3 compare_commits.py ${i}
+        done
+  artifacts:
+    paths:
+      - src/plot_1.png
+      - src/plot_2.png
+      - src/plot_3.png
+      - src/plot_4.png
+      - src/plot_5.png
