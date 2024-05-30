@@ -124,11 +124,13 @@ compare:
     - chmod +x /usr/local/bin/docker-compose
     - cd recordings
     # Iterating through the videos to compare
-    - |-
-      for i in {1..5}
-      do
-        echo "Analyzing video ${i} ..." 
-        ALGO_VERSION="current-image:latest" VIDEO=${i} docker-compose -f docker-compose.yaml up --no-log-prefix --abort-on-container-exit
-        ALGO_VERSION="previous-image:latest" VIDEO=${i} docker-compose -f docker-compose.yaml up --no-log-prefix --abort-on-container-exit
-      done
+    - ALGO_VERSION="current-image:latest" VIDEO=1 docker compose -f docker-compose.yaml up --no-log-prefix --abort-on-container-exit
+
+    # - |-
+    #   for i in {1..5}
+    #   do
+    #     echo "Analyzing video ${i} ..." 
+    #     ALGO_VERSION="current-image:latest" VIDEO=${i} docker compose -f docker-compose.yaml up --no-log-prefix --abort-on-container-exit
+    #     ALGO_VERSION="previous-image:latest" VIDEO=${i} docker compose -f docker-compose.yaml up --no-log-prefix --abort-on-container-exit
+    #   done
     # Todo - add the comparison of the two videos
