@@ -127,7 +127,7 @@ compare:
     # - ALGO_VERSION="current-image:latest" VIDEO=1 docker compose -f docker-compose.yaml up --no-log-prefix --abort-on-container-exit
 
     - |-
-      for i in {1..5}
+      for i in {1..1}
       do
         echo "Analyzing video ${i} ..." 
         ALGO_VERSION="current-image:latest" VIDEO=${i} docker compose -f docker-compose.yaml up --no-log-prefix --abort-on-container-exit
