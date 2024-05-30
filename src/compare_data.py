@@ -15,15 +15,17 @@ def display_chart():
     plt.plot(df_current['groundSteering'], color='red', label='Original groundSteering')
     # Plot our algorithm's output
     plt.plot(df_current['output'], color='blue', label='Our output')
-    # Plot the output from the previous commit
-    plt.plot(df_previous['output'], color='green', label='Previous output')
 
     # Set the x-axis labels to sampleTimeStamp
-    # It makes the chart a bit unreadable, but it's in the requirements
-    plt.xticks(ticks=df['sampleTimeStamp'], rotation=90)
+    # Commented out for readability
+    # plt.xticks(ticks=df['sampleTimeStamp'], rotation=90)
 
     # Set the plot title
     plt.title("groundSteering")
+    # Set the x-axis label
+    plt.xlabel("sampleTimestamp")
+    # Set the y-axis label
+    plt.ylabel("groundSteering angle")
     # Display the legend
     plt.legend()
 
@@ -78,7 +80,6 @@ if __name__ == '__main__':
     try:
         # Read the .csv file or handle the exception if it deosn't exist
         df_current = pd.read_csv("src/current.csv", sep=';')
-        df_previous = pd.read_csv("src/previous.csv", sep=';')
         main()
     except FileNotFoundError:
         print("File not found.")
