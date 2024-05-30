@@ -156,6 +156,7 @@ compare:
 
 
   artifacts:
+    expire_in: 2 months
     paths:
       - recordings/plot_1.png
       - recordings/plot_2.png
