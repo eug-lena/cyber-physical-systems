@@ -21,12 +21,12 @@ def display_chart():
 
     # Set the x-axis labels to sampleTimeStamp
     # It makes the chart a bit unreadable, but it's in the requirements
-    # plt.xticks(ticks=df_current['sampleTimeStamp'], rotation=90)
+    plt.xticks(range(len(df_current['sampleTimeStamp'])), df_current['sampleTimeStamp'], rotation=90)
 
     # Set the plot title
     plt.title("groundSteering")
     # Set the x-axis label
-    plt.xlabel("frameNumber")
+    plt.xlabel("sampleTimeStamp")
     # Set the y-axis label
     plt.ylabel("groundSteering angle")
     # Display the legend
